@@ -1,0 +1,311 @@
+/* 业务模块共用的表单、列表和弹窗；不覆盖系统概览的卡片布局。 */
+.business-page {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.business-page .page-heading {
+  margin-bottom: 0;
+  gap: 20px;
+}
+
+.business-panel {
+  min-width: 0;
+  padding: 24px;
+}
+
+.business-panel h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
+  font-size: 16px;
+}
+
+.business-panel h2 small {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: #8a95a7;
+}
+
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: 292px minmax(0, 1fr);
+  align-items: start;
+  gap: 22px;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 20px;
+}
+
+.toolbar > .n-input {
+  flex: 1;
+  min-width: 100px;
+}
+
+.toolbar > .n-select {
+  flex: 0 0 150px;
+  min-width: 120px;
+}
+
+.toolbar > .n-button {
+  flex-shrink: 0;
+}
+
+.groups-panel .toolbar {
+  margin-bottom: 24px;
+}
+
+.group-row {
+  padding: 16px 14px;
+  margin-top: 10px;
+  border: 1px solid #e8edf5;
+  border-radius: 10px;
+  background: #fafbfd;
+}
+
+.group-row.selected {
+  border-color: #b9cffb;
+  background: #f0f5ff;
+}
+
+.group-row > .n-button {
+  display: flex;
+  max-width: 100%;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.group-row > .n-button .n-button__content {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  line-height: 1.7;
+}
+
+.group-row .toolbar {
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.group-row .row-actions {
+  margin-top: 12px;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid #e8edf4;
+  border-radius: 10px;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 610px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+
+.data-table th {
+  padding: 13px 16px;
+  color: #8490a2;
+  background: #f7f9fc;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 18px 16px;
+  border-top: 1px solid #edf1f6;
+  vertical-align: middle;
+  line-height: 1.7;
+}
+
+.data-table td:first-child {
+  min-width: 170px;
+}
+
+.data-table strong,
+.data-table small {
+  display: block;
+}
+
+.data-table strong {
+  font-size: 12px;
+  color: #263750;
+  overflow-wrap: anywhere;
+}
+
+.data-table small {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #8a95a6;
+}
+
+.data-table .note-cell {
+  min-width: 110px;
+  max-width: 240px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  color: #6c788c;
+}
+
+.security-search {
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e8edf5;
+  border-radius: 10px;
+  background: #fafcff;
+}
+
+.security-search .toolbar {
+  margin-bottom: 0;
+}
+
+.search-result {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 0 2px;
+  margin-top: 14px;
+  border-top: 1px solid #e8edf4;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.search-result > div {
+  min-width: 0;
+}
+
+.search-result strong {
+  color: #314a71;
+  margin-right: 6px;
+}
+
+.search-result small {
+  display: block;
+  color: #8a95a6;
+  margin-top: 5px;
+}
+
+.search-result .n-button {
+  flex-shrink: 0;
+}
+
+/* 弹窗挂载在 body 下，宽度需脱离业务页面祖先约束。 */
+.editor-modal.n-card {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border-radius: 14px;
+}
+
+.entry-form {
+  display: grid;
+  gap: 18px;
+}
+
+.entry-form label {
+  display: grid;
+  gap: 8px;
+  color: #5f6c81;
+  font-size: 12px;
+}
+
+.entry-form > .n-button {
+  justify-self: end;
+  min-width: 100px;
+  margin-top: 4px;
+}
+
+.entry-form .field-error {
+  margin-top: -9px;
+  color: #b54b41;
+  font-size: 11px;
+}
+
+.entry-form + .n-alert {
+  margin-top: 18px;
+}
+
+.token-panel {
+  width: 100%;
+  max-width: 680px;
+  margin: 36px auto;
+  padding: 38px;
+}
+
+.token-panel h2 {
+  margin: 14px 0;
+  font-size: 22px;
+}
+
+.token-panel p {
+  color: #7d899b;
+  font-size: 12px;
+  line-height: 1.9;
+}
+
+.token-panel .toolbar {
+  margin-top: 26px;
+}
+
+.business-panel > .muted,
+.security-search > .muted {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #8a95a6;
+}
+
+.security-search > .muted {
+  margin-top: 14px;
+}
+
+@media (max-width: 1200px) {
+  .watchlist-grid {
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 16px;
+  }
+  .business-panel { padding: 20px; }
+}
+
+@media (max-width: 960px) {
+  .watchlist-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .main-shell,
+  .main-content { min-width: 0; }
+  .topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .business-page { gap: 18px; }
+  .business-page .page-heading { align-items: flex-start; flex-wrap: wrap; gap: 14px; }
+  .business-panel { padding: 18px; }
+  .business-panel h2 { font-size: 14px; margin-bottom: 18px; }
+  .toolbar { flex-wrap: wrap; }
+  .toolbar > .n-select { flex: 1 1 120px; }
+  .token-panel { padding: 25px 20px; margin: 10px auto; }
+  .token-panel .toolbar > .n-input { flex-basis: 100%; }
+  .token-panel .toolbar > .n-button { width: 100%; }
+  .editor-modal.n-card { max-height: calc(100vh - 32px); }
+  .data-table { min-width: 600px; }
+}
