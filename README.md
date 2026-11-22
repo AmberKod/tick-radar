@@ -66,6 +66,20 @@ SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新
 
 2026 日历核对依据：[上交所休市公告](https://www.sse.com.cn/disclosure/announcement/general/c/c_20251222_10802507.shtml)、[深交所休市公告](https://www.szse.cn/disclosure/notice/t20251222_618087.html)、[北交所休市公告](https://www.bse.cn/important_news/200027428.html)、[港交所证券市场假期](https://www.hkex.com.hk/-/media/HKEX-Market/Services/Circulars-and-Notices/Participant-and-Members-Circulars/SEHK/2025/cc_SEHK_CT_075_2025.pdf)、[NYSE 假期和交易时间](https://nyse.com/trade/hours-calendars)、[Nasdaq 股票假期](https://www.nasdaq.com/market-activity/stock-market-holiday-schedule)。交易前仍需核对交易所临时公告；此模块不等同于自动交易或预警授权。
 
+## 历史日线 K 线
+
+休市不会阻止查询已有历史数据。进入侧栏“历史K线”或点击报价表中的“历史K线”，也可直接打开 `http://127.0.0.1:18180/market/history?symbol=US:AAPL`；历史页面无需 Token，不依赖最新报价是否成功或交易日历是否开市。
+
+- 支持真实日线蜡烛图及供应商原始成交量，红涨绿跌，可缩放、拖拽、悬停查看精确 OHLCV 字符串。默认120根，可选60/120/250/640根；接口范围1至640。
+- A股、中国香港市场支持不复权/raw、前复权/qfq、后复权/hfq，具体标的仍以供应商返回为准；美股当前支持raw/qfq，hfq明确返回 `422 ADJUSTMENT_UNSUPPORTED`，不退回不复权冒充后复权。
+- 港股复权走专用历史接口；美股先从历史响应的证券元信息核对代码及交易所后缀，再读取对应完整序列。类别股如 `US:BRK.B` 不截断。北交所样本历史覆盖不足或为空时会如实显示，不保证所有标的均有640根历史。
+- 首批保守排除交易所本地日期为今天的 Bar，即使当日已收市也不纳入；页面明确实际起止日、请求/返回根数、复权和采集时间。历史数据不套用实时报价180秒过期规则，也不拼接当前报价。
+- OHLC使用十进制字符串、日期严格升序，校验高低价范围、非负成交量和响应体大小；附加公司行动字段不当作OHLCV。成交量单位尚未独立核验，保持原始值，不混用不同市场的“股/手”。
+- 本批使用独立60秒进程内缓存，最多32项；同进程请求有并发控制，历史上游预算30次HTTP/分钟（美股身份探测也计数）。单请求6秒、整个历史查询12秒，前端等待15秒；超限/忙碌显示错误，不无限请求或降级伪造。
+- `history_complete` 只表示达到请求根数，不保证无缺日、全部上市历史或所有公司行动正确。前复权历史可能因后续公司行动修订。日线长期存储、分钟线和指标计算尚未实现；历史链路不启动Worker，不写实时缓存或广播，不落MySQL。
+
+2026-11-22周末实测：`CN:600519`、`HK:00700`、`US:AAPL`及`US:BRK.B`均取得120根截至2026-11-20的日线；A股640根查询和已支持复权口径通过。真实浏览器9项验收、页面错误0，桌面及390px布局通过。证据为 `artifacts/history-validation.json`、`backend-history-tests.xml`、`frontend-history-tests.json`、`history-desktop.png`、`history-mobile.png`。源为腾讯公开历史接口，展示和长期存储许可仍待核实。
+
 ## 迁移与接口契约
 
 MySQL 可用并已设置连接环境变量后执行迁移；应用启动不会自动建表。
@@ -115,6 +129,7 @@ backend/.venv/Scripts/python.exe -m cross_market.operations.backup restore-check
 - `GET /api/v1/events/stream?symbols=...`：鉴权 SSE，单次最多50代码；事件为 snapshot / quote.updated / heartbeat / error，data契约为 QuoteStreamEvent。Token不接受URL传递。
 - `GET /api/v1/market-calendar/statuses`：公共七所常规日历，可用 `?exchange=NASDAQ` 筛选一所；不接受任意日期查询。
 - `GET /api/v1/market/quote?symbol=...`、`GET /api/v1/market/quotes?symbols=...`：公共观察报价，匿名 GET 不允许强制刷新。
+- `GET /api/v1/market/history?symbol=US:AAPL&limit=120&adjustment=raw`：公共历史日线，与实时链路及日历开市状态独立。
 - `POST /api/v1/market/refresh`：鉴权主动刷新，受共享租约和预算限制。
 - `POST /api/v1/securities/from-quote`：鉴权真实查询后登记证券，来源标记 `TENCENT_LOOKUP`。
 - `/api/v1/securities`：手工证券资料、分页搜索、市场筛选及名称/状态修改。
@@ -130,7 +145,7 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新验证（2026-11-22）：含备份可选依赖时后端 250 项、前端 56 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
+最新验证（2026-11-22）：含备份可选依赖时后端 356 项、前端 63 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
 
 真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0003`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。Nginx 使用 Docker DNS 动态解析 API 容器地址，API 独立重建后代理恢复已实测。关闭浏览器后的 35 秒无行情 HTTP 请求窗口中，两个自选的采集时间继续推进，采集任务为 success；证据为 `artifacts/market-worker-validation.json`。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
 
