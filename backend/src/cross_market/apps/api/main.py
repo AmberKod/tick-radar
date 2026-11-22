@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from cross_market.apps.api.bootstrap import register_modules
 from cross_market.apps.api.middleware import register_middleware
+from cross_market.modules.indicators.application.minute import MinuteIndicatorService
 from cross_market.modules.indicators.application.service import IndicatorService
 from cross_market.modules.market_calendar.application.service import CalendarService
 from cross_market.modules.market_data.application.history import HistoryService
+from cross_market.modules.market_data.application.minute import MinuteHistoryService
 from cross_market.modules.market_data.application.service import QuoteService
 from cross_market.modules.market_data.application.stream import QuoteStreamService
 from cross_market.modules.market_data.infrastructure.events import RedisQuoteEvents
@@ -48,6 +50,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ) as client:
                 app.state.history_service = HistoryService(client, settings)
                 app.state.indicator_service = IndicatorService(app.state.history_service)
+                app.state.minute_history_service = MinuteHistoryService(client, settings)
+                app.state.minute_indicator_service = MinuteIndicatorService(
+                    app.state.minute_history_service
+                )
                 app.state.quote_service = QuoteService(client, redis, settings, calendar=calendar)
                 app.state.quote_stream = QuoteStreamService(
                     app.state.quote_service, RedisQuoteEvents(redis)

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Request
 
 from cross_market.modules.market_data.application.history_schemas import HistoryResponse
+from cross_market.modules.market_data.application.minute_schemas import MinuteHistoryResponse
 from cross_market.modules.market_data.application.schemas import (
     QuoteDTO,
     QuotesResponse,
@@ -34,6 +35,20 @@ async def history(
         return await request.app.state.history_service.get_history(symbol, limit, adjustment)
     except ValueError as exc:
         raise AppError(422, "INVALID_HISTORY_REQUEST", "历史日线请求参数无效") from exc
+
+
+@router.get("/history/minute", response_model=MinuteHistoryResponse)
+async def minute_history(
+    request: Request,
+    symbol: str = Query(min_length=1, max_length=40),
+    limit: int = Query(default=120, ge=1, le=320),
+):
+    try:
+        if set(request.query_params) - {"symbol", "limit"}:
+            raise ValueError("分钟历史不接受额外参数")
+        return await request.app.state.minute_history_service.get_history(symbol, limit)
+    except ValueError as exc:
+        raise AppError(422, "INVALID_MINUTE_HISTORY_REQUEST", "分钟历史请求参数无效") from exc
 
 
 @router.get("/quote", response_model=QuoteDTO)

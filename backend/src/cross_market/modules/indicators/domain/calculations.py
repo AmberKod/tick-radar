@@ -1,11 +1,11 @@
 from dataclasses import dataclass, fields
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 
 
 @dataclass(frozen=True)
 class Bar:
-    day: date
+    day: date | datetime
     high: Decimal
     low: Decimal
     close: Decimal
@@ -43,7 +43,7 @@ class Params:
 
 @dataclass(frozen=True)
 class Point:
-    date: date
+    date: date | datetime
     ma: str | None
     dif: str | None
     dea: str | None
@@ -76,12 +76,29 @@ def _format(value: Decimal | None) -> str | None:
 
 
 def calculate_daily(bars: list[Bar], parameters: Params = Params()) -> list[Point]:
+    if any(type(bar.day) is not date for bar in bars):
+        raise ValueError("日线日期必须为date")
+    return _calculate(bars, parameters)
+
+
+def calculate_intraday(bars: list[Bar], parameters: Params = Params()) -> list[Point]:
+    if any(
+        not isinstance(bar.day, datetime)
+        or bar.day.tzinfo is None
+        or bar.day.utcoffset() != timedelta(0)
+        for bar in bars
+    ):
+        raise ValueError("分钟时间必须为UTC aware datetime")
+    return _calculate(bars, parameters)
+
+
+def _calculate(bars: list[Bar], parameters: Params) -> list[Point]:
     # 即使调用方绕开dataclass构造，也在领域入口校验参数。
     Params(**{field.name: getattr(parameters, field.name) for field in fields(Params)})
     previous_day = None
     for bar in bars:
-        if type(bar.day) is not date or (previous_day is not None and bar.day <= previous_day):
-            raise ValueError("日线日期必须严格升序")
+        if previous_day is not None and bar.day <= previous_day:
+            raise ValueError("Bar时间必须严格升序")
         for value in (bar.high, bar.low, bar.close):
             if not isinstance(value, Decimal) or not value.is_finite() or value <= 0:
                 raise ValueError("日线价格必须为有限正Decimal")

@@ -26,7 +26,7 @@ def test_dependency_direction_and_no_api_scheduler():
 
 
 def test_business_router_and_cross_module_boundaries():
-    for module in ("watchlist", "securities"):
+    for module in ("watchlist", "securities", "indicators"):
         module_root = ROOT / "modules" / module
         for path in module_root.rglob("*.py"):
             tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -70,3 +70,19 @@ def test_business_router_and_cross_module_boundaries():
     assert "watchlist" not in shared
     for filename in ("models.py", "schemas.py", "service.py"):
         assert not (ROOT / "modules" / "watchlist" / filename).exists()
+
+
+def test_indicator_domain_has_no_io_or_other_module_dependencies():
+    for path in (ROOT / "modules" / "indicators" / "domain").rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            names = []
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names = [node.module]
+            for name in names:
+                assert name.split(".")[0] not in {
+                    "fastapi", "sqlalchemy", "redis", "httpx", "pandas", "requests"
+                }, (path, name)
+                assert not name.startswith("cross_market.modules."), (path, name)

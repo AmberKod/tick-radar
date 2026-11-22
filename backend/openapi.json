@@ -1641,6 +1641,62 @@
         }
       }
     },
+    "/api/v1/market/history/minute": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Minute History",
+        "operationId": "minute_history_api_v1_market_history_minute_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 320,
+              "minimum": 1,
+              "default": 120,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinuteHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/market/quote": {
       "get": {
         "tags": [
@@ -1926,6 +1982,87 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/indicators/minute": {
+      "post": {
+        "tags": [
+          "indicators"
+        ],
+        "summary": "Minute Indicators",
+        "operationId": "minute_indicators_api_v1_indicators_minute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MinuteIndicatorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinuteIndicatorsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -3101,6 +3238,430 @@
           "checked_at"
         ],
         "title": "MarketCalendarStatusesResponse"
+      },
+      "MinuteBar": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "source_time_raw": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Source Time Raw"
+          },
+          "open": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Open"
+          },
+          "high": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "High"
+          },
+          "low": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Low"
+          },
+          "close": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Close"
+          },
+          "volume": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Volume"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "source_time_raw",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "MinuteBar"
+      },
+      "MinuteHistoryResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "market": {
+            "type": "string",
+            "const": "CN",
+            "title": "Market",
+            "default": "CN"
+          },
+          "currency": {
+            "type": "string",
+            "const": "CNY",
+            "title": "Currency",
+            "default": "CNY"
+          },
+          "source": {
+            "type": "string",
+            "const": "tencent_minute_public",
+            "title": "Source",
+            "default": "tencent_minute_public"
+          },
+          "period": {
+            "type": "string",
+            "const": "m15",
+            "title": "Period",
+            "default": "m15"
+          },
+          "adjustment": {
+            "type": "string",
+            "const": "vendor_unverified",
+            "title": "Adjustment",
+            "default": "vendor_unverified"
+          },
+          "timezone": {
+            "type": "string",
+            "const": "Asia/Shanghai",
+            "title": "Timezone",
+            "default": "Asia/Shanghai"
+          },
+          "timestamp_semantics": {
+            "type": "string",
+            "const": "VENDOR_BAR_LABEL_UNVERIFIED",
+            "title": "Timestamp Semantics",
+            "default": "VENDOR_BAR_LABEL_UNVERIFIED"
+          },
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/MinuteBar"
+            },
+            "type": "array",
+            "title": "Bars"
+          },
+          "requested_limit": {
+            "type": "integer",
+            "title": "Requested Limit"
+          },
+          "actual_count": {
+            "type": "integer",
+            "title": "Actual Count"
+          },
+          "earliest_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest Timestamp"
+          },
+          "latest_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Timestamp"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "data_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data As Of"
+          },
+          "observation_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Observation Only",
+            "default": true
+          },
+          "history_complete": {
+            "type": "boolean",
+            "title": "History Complete"
+          },
+          "coverage_reason": {
+            "type": "string",
+            "title": "Coverage Reason"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "bars",
+          "requested_limit",
+          "actual_count",
+          "earliest_timestamp",
+          "latest_timestamp",
+          "checked_at",
+          "data_as_of",
+          "history_complete",
+          "coverage_reason",
+          "warnings"
+        ],
+        "title": "MinuteHistoryResponse"
+      },
+      "MinuteIndicatorPoint": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "ma": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ma"
+          },
+          "dif": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dif"
+          },
+          "dea": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dea"
+          },
+          "macd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Macd"
+          },
+          "k": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "K"
+          },
+          "d": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D"
+          },
+          "j": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "J"
+          },
+          "atr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "ma",
+          "dif",
+          "dea",
+          "macd",
+          "k",
+          "d",
+          "j",
+          "atr"
+        ],
+        "title": "MinuteIndicatorPoint"
+      },
+      "MinuteIndicatorRequest": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Symbol"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 250.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 120
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/IndicatorParameters"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "MinuteIndicatorRequest"
+      },
+      "MinuteIndicatorsResponse": {
+        "properties": {
+          "history": {
+            "$ref": "#/components/schemas/MinuteHistoryResponse"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/IndicatorParameters"
+          },
+          "algorithm_version": {
+            "type": "string",
+            "const": "m15-v1",
+            "title": "Algorithm Version",
+            "default": "m15-v1"
+          },
+          "parameter_hash": {
+            "type": "string",
+            "title": "Parameter Hash"
+          },
+          "source_bars": {
+            "type": "integer",
+            "title": "Source Bars"
+          },
+          "warmup_bars": {
+            "type": "integer",
+            "title": "Warmup Bars"
+          },
+          "warmup_requested": {
+            "type": "integer",
+            "title": "Warmup Requested"
+          },
+          "visible_bars": {
+            "type": "integer",
+            "title": "Visible Bars"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/MinuteIndicatorPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "calculated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Calculated At"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "formula_notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Formula Notes"
+          },
+          "observation_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Observation Only",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "history",
+          "parameters",
+          "parameter_hash",
+          "source_bars",
+          "warmup_bars",
+          "warmup_requested",
+          "visible_bars",
+          "points",
+          "as_of",
+          "calculated_at",
+          "warnings",
+          "formula_notes"
+        ],
+        "title": "MinuteIndicatorsResponse"
       },
       "ModuleInfo": {
         "properties": {
