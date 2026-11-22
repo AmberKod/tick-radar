@@ -18,7 +18,7 @@ class Security(Base):
     name: Mapped[str] = mapped_column(String(120))
     currency: Mapped[str] = mapped_column(String(3))
     status: Mapped[str] = mapped_column(String(10), default="ACTIVE")
-    source: Mapped[str] = mapped_column(String(10), default="MANUAL")
+    source: Mapped[str] = mapped_column(String(24), default="MANUAL")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

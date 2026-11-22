@@ -2,7 +2,7 @@ import asyncio
 import json
 
 from cross_market.apps.worker.runtime import RELEASE, RENEW, WorkerRuntime
-from cross_market.apps.worker.task_registry import TASKS_ENABLED, registered_tasks
+from cross_market.apps.worker.task_registry import registered_tasks
 from cross_market.shared.config import Settings
 
 
@@ -57,7 +57,8 @@ async def test_shutdown_releases_owned_lock_and_marks_stopping():
     heartbeat = json.loads(redis.data[settings.worker_heartbeat_key])
     assert heartbeat["status"] == "stopping"
     assert heartbeat["instance_id"] == worker.owner
-    assert registered_tasks() == () and TASKS_ENABLED is False
+    assert registered_tasks() == ()
+    assert heartbeat["tasks_enabled"] is False
 
 
 async def test_lock_loss_stops_and_preserves_new_owner():

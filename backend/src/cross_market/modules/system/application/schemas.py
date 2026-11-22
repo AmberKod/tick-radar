@@ -18,8 +18,13 @@ class Components(BaseModel):
 
 class TaskStatus(BaseModel):
     name: str
-    status: Literal["disabled"] = "disabled"
+    status: Literal[
+        "disabled", "waiting", "idle", "success", "partial", "error", "stale", "unknown"
+    ] = "disabled"
     detail: str
+    last_success_at: datetime | None = None
+    checked_at: datetime | None = None
+    symbol_count: int | None = None
 
 
 class SystemStatus(BaseModel):

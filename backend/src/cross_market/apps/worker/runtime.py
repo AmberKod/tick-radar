@@ -21,13 +21,13 @@ return 1
 
 
 class WorkerRuntime:
-    def __init__(self, redis, settings):
+    def __init__(self, redis, settings, tasks=None):
         self.redis = redis
         self.settings = settings
         self.owner = uuid4().hex
         self.started_at = datetime.now(UTC).isoformat()
         self.stop_event = asyncio.Event()
-        self.tasks = registered_tasks()
+        self.tasks = registered_tasks() if tasks is None else tuple(tasks)
 
     def heartbeat(self, status: str) -> str:
         return json.dumps(
@@ -38,7 +38,7 @@ class WorkerRuntime:
                 "instance_id": self.owner,
                 "started_at": self.started_at,
                 "heartbeat_at": datetime.now(UTC).isoformat(),
-                "tasks_enabled": False,
+                "tasks_enabled": bool(self.tasks),
             }
         )
 
@@ -76,17 +76,27 @@ class WorkerRuntime:
         )
         if not acquired:
             return 1
+        running = []
         try:
+            if not await self.renew():
+                return 1
+            if not self.stop_event.is_set():
+                running = [asyncio.create_task(callback(self)) for callback in self.tasks]
             while not self.stop_event.is_set():
-                if not await self.renew():
-                    return 1
                 try:
                     await asyncio.wait_for(
                         self.stop_event.wait(), self.settings.worker_heartbeat_interval_seconds
                     )
                 except TimeoutError:
                     pass
+                if self.stop_event.is_set():
+                    break
+                if any(task.done() for task in running) or not await self.renew():
+                    return 1
             return 0
         finally:
-            # 未持有锁时 Lua 为无操作，不影响其他进程的心跳和锁。
+            for task in running:
+                task.cancel()
+            await asyncio.gather(*running, return_exceptions=True)
+            # 先取消采集，再释放所有权；旧实例不能改写新实例状态。
             await self.release()

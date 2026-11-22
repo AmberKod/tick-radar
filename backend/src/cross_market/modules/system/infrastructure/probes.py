@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import text
 
 from cross_market.modules.system.application.schemas import ComponentStatus
+from cross_market.modules.system.infrastructure.task_status import task_statuses
 
 
 class InfrastructureProbes:
@@ -12,6 +13,9 @@ class InfrastructureProbes:
         self.engine = engine
         self.redis = redis
         self.settings = settings
+
+    async def task_statuses(self):
+        return await task_statuses(self.redis, self.settings)
 
     async def mysql_status(self) -> ComponentStatus:
         try:

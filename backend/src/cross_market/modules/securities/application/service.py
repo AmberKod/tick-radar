@@ -31,6 +31,35 @@ async def create_security(session, body):
     return SecurityDTO.model_validate(row)
 
 
+async def create_from_quote(session, body, quote_service):
+    from cross_market.modules.market_data.application.symbols import resolve_exchange
+
+    response = await quote_service.get_quotes([body.symbol], refresh=True)
+    quote = response.quotes[0]
+    if not quote.name or not quote.price or not quote.provider_symbol or quote.error:
+        raise AppError(422, "QUOTE_LOOKUP_FAILED", "无法验证该证券的公开报价")
+    exchange = resolve_exchange(body.symbol, body.exchange)
+    if quote.provider_exchange is not None and quote.provider_exchange != exchange:
+        raise AppError(422, "QUOTE_EXCHANGE_MISMATCH", "供应商报价交易所与所选交易所不匹配")
+    existing = await session.scalar(select(Security).where(Security.symbol == body.symbol))
+    if existing is not None:
+        if existing.exchange != exchange or existing.security_type != body.security_type:
+            raise AppError(409, "SECURITY_IDENTITY_CONFLICT", "已有证券的交易所或类型与请求不一致")
+        return SecurityDTO.model_validate(existing)
+    row = Security(
+        symbol=body.symbol,
+        exchange=exchange,
+        security_type=body.security_type,
+        market=quote.market,
+        currency=quote.currency,
+        name=quote.name,
+        source="TENCENT_LOOKUP",
+    )
+    session.add(row)
+    await session.flush()
+    return SecurityDTO.model_validate(row)
+
+
 async def list_securities(session, *, q="", market=None, page=1, page_size=20):
     statement = select(Security)
     if market is not None:

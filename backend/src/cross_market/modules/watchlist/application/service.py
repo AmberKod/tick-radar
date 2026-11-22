@@ -7,6 +7,21 @@ from cross_market.modules.watchlist.infrastructure.models import WatchlistGroup,
 from cross_market.shared.exceptions import AppError
 
 
+async def list_quote_targets(session, limit=50) -> list[str]:
+    if not 1 <= limit <= 50:
+        raise ValueError("报价目标数量必须在1至50之间")
+    ids = list(
+        await session.scalars(
+            select(WatchlistItem.security_id)
+            .distinct()
+            .order_by(WatchlistItem.security_id)
+            .limit(limit)
+        )
+    )
+    securities = await get_securities(session, ids)
+    return list(dict.fromkeys(securities[key].symbol for key in ids if key in securities))
+
+
 async def groups(session, *, lock=False):
     if lock:
         await lock_watchlist(session)

@@ -1,6 +1,16 @@
-def registered_tasks() -> tuple:
-    # 数据源与告警用例尚未落地，不注册占位任务。
-    return ()
+from functools import partial
+
+from cross_market.apps.worker.quote_collector import quote_collector
 
 
-TASKS_ENABLED = False
+def registered_tasks(*, session_factory=None, list_targets=None, quote_service=None) -> tuple:
+    if session_factory is None or list_targets is None or quote_service is None:
+        return ()
+    return (
+        partial(
+            quote_collector,
+            session_factory=session_factory,
+            list_targets=list_targets,
+            quote_service=quote_service,
+        ),
+    )

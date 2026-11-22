@@ -43,6 +43,23 @@ class SecurityCreate(BaseModel):
         return self
 
 
+class SecurityFromQuote(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    symbol: str = Field(max_length=40)
+    exchange: Literal["SSE", "SZSE", "BSE", "HKEX", "NASDAQ", "NYSE", "AMEX"] | None = None
+    security_type: Literal["STOCK", "ETF", "ADR"] = "STOCK"
+
+    @model_validator(mode="after")
+    def validate_identity(self):
+        from cross_market.modules.market_data.application.symbols import resolve_exchange
+
+        exchange = resolve_exchange(self.symbol, self.exchange)
+        SecurityCreate(
+            symbol=self.symbol, exchange=exchange, security_type=self.security_type, name="校验"
+        )
+        return self
+
+
 class SecurityUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str | None = Field(default=None, min_length=1, max_length=120)
@@ -65,7 +82,7 @@ class SecurityDTO(BaseModel):
     name: str
     currency: Literal["CNY", "HKD", "USD"]
     status: Literal["ACTIVE", "INACTIVE"]
-    source: Literal["MANUAL"]
+    source: Literal["MANUAL", "TENCENT_LOOKUP"]
     created_at: datetime
     updated_at: datetime
 

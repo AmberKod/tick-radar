@@ -1,11 +1,12 @@
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from cross_market.modules.securities.application import service
 from cross_market.modules.securities.application.schemas import (
     SecurityCreate,
     SecurityDTO,
+    SecurityFromQuote,
     SecurityPage,
     SecurityUpdate,
 )
@@ -39,6 +40,11 @@ async def list_securities(
     return await service.list_securities(
         session, q=q, market=market, page=page, page_size=page_size
     )
+
+
+@router.post("/from-quote", response_model=SecurityDTO, status_code=201)
+async def from_quote(request: Request, body: SecurityFromQuote, session: Session):
+    return await service.create_from_quote(session, body, request.app.state.quote_service)
 
 
 @router.get("/{security_id}", response_model=SecurityDTO)

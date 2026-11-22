@@ -44,6 +44,105 @@ def client(tmp_path, monkeypatch):
         yield value
 
 
+def test_from_quote_register_duplicate_and_validation(client):
+    from datetime import UTC, datetime
+
+    from cross_market.modules.market_data.application.schemas import QuoteDTO, QuotesResponse
+
+    quote = QuoteDTO(
+        symbol="US:AAPL",
+        market="US",
+        currency="USD",
+        provider_symbol="usAAPL",
+        name="供应商名称",
+        price="12.30",
+        received_at=datetime.now(UTC),
+    )
+    client.app.state.quote_service = SimpleNamespace(
+        get_quotes=AsyncMock(
+            return_value=QuotesResponse(quotes=[quote], checked_at=datetime.now(UTC))
+        )
+    )
+    body = {"symbol": "US:AAPL", "exchange": "NASDAQ"}
+    first = client.post("/api/v1/securities/from-quote", headers=TOKEN, json=body)
+    assert first.status_code == 201, first.text
+    assert first.json()["source"] == "TENCENT_LOOKUP"
+    assert first.json()["name"] == "供应商名称"
+    duplicate = client.post("/api/v1/securities/from-quote", headers=TOKEN, json=body)
+    assert duplicate.status_code == 201, duplicate.text
+    assert duplicate.json() == first.json()
+    for changes in ({"exchange": "NYSE"}, {"security_type": "ETF"}):
+        conflict = client.post(
+            "/api/v1/securities/from-quote", headers=TOKEN, json={**body, **changes}
+        )
+        assert conflict.status_code == 409, conflict.text
+        assert conflict.json()["code"] == "SECURITY_IDENTITY_CONFLICT"
+    assert client.get("/api/v1/securities", headers=TOKEN).json()["items"] == [first.json()]
+    assert (
+        client.post(
+            "/api/v1/securities/from-quote", headers=TOKEN, json={"symbol": "US:AAPL"}
+        ).status_code
+        == 422
+    )
+    assert client.post("/api/v1/securities/from-quote", json=body).status_code == 401
+    quote.price = None
+    assert client.post("/api/v1/securities/from-quote", headers=TOKEN, json=body).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("ticker", "exchange", "wrong_exchange"),
+    [
+        ("AAPL.OQ", "NASDAQ", "NYSE"),
+        ("AAPL.N", "NYSE", "AMEX"),
+        ("AAPL.A", "AMEX", "NASDAQ"),
+        ("AAPL", "NASDAQ", None),
+    ],
+)
+async def test_from_quote_provider_exchange_http(client, ticker, exchange, wrong_exchange):
+    import fakeredis.aioredis
+    import httpx
+
+    from cross_market.modules.market_data.application.service import QuoteService
+
+    payload = f'v_usAAPL="200~供应商名称~{ticker}~12.30~12.00";'
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, content=payload.encode("gb18030"))
+        )
+    ) as http:
+        client.app.state.quote_service = QuoteService(
+            http, fakeredis.aioredis.FakeRedis(), Settings()
+        )
+        body = {"symbol": "US:AAPL", "exchange": exchange}
+        missing = client.post(
+            "/api/v1/securities/from-quote", headers=TOKEN, json={"symbol": "US:AAPL"}
+        )
+        assert missing.status_code == 422
+        if wrong_exchange:
+            mismatch = client.post(
+                "/api/v1/securities/from-quote",
+                headers=TOKEN,
+                json={**body, "exchange": wrong_exchange},
+            )
+            assert mismatch.status_code == 422, mismatch.text
+            assert mismatch.json()["code"] == "QUOTE_EXCHANGE_MISMATCH"
+            assert client.get("/api/v1/securities", headers=TOKEN).json()["total"] == 0
+        first = client.post("/api/v1/securities/from-quote", headers=TOKEN, json=body)
+        assert first.status_code == 201, first.text
+        assert first.json()["exchange"] == exchange
+        repeated = client.post("/api/v1/securities/from-quote", headers=TOKEN, json=body)
+        assert repeated.status_code == 201, repeated.text
+        assert repeated.json() == first.json()
+        conflict = client.post(
+            "/api/v1/securities/from-quote",
+            headers=TOKEN,
+            json={**body, "security_type": "ETF"},
+        )
+        assert conflict.status_code == 409, conflict.text
+        assert conflict.json()["code"] == "SECURITY_IDENTITY_CONFLICT"
+        assert client.get("/api/v1/securities", headers=TOKEN).json()["items"] == [first.json()]
+
+
 def security(client, symbol="US:AAPL", exchange="NASDAQ"):
     response = client.post(
         "/api/v1/securities",
@@ -275,7 +374,7 @@ def test_openapi_error_and_enum_contract(client):
     assert dto["id"]["type"] == "string"
     for field in ("market", "exchange", "security_type", "status"):
         assert dto[field]["enum"]
-    assert dto["source"]["const"] == "MANUAL"
+    assert dto["source"]["enum"] == ["MANUAL", "TENCENT_LOOKUP"]
     for path in ("/api/v1/securities", "/api/v1/watchlists"):
         responses = schema["paths"][path]["get"]["responses"]
         for status in ("401", "404", "409", "422", "503"):

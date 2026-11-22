@@ -30,5 +30,10 @@ class HealthService:
             components=Components(
                 api=ComponentStatus(status="healthy"), mysql=mysql, redis=redis, worker=worker
             ),
-            tasks=disabled_tasks(),
+            tasks=(await self.probes.task_statuses())
+            if hasattr(self.probes, "task_statuses")
+            else disabled_tasks(),
+            market_data_enabled=bool(
+                getattr(getattr(self.probes, "settings", None), "market_observation_enabled", False)
+            ),
         )

@@ -353,6 +353,92 @@
         }
       }
     },
+    "/api/v1/securities/from-quote": {
+      "post": {
+        "tags": [
+          "securities"
+        ],
+        "summary": "From Quote",
+        "operationId": "from_quote_api_v1_securities_from_quote_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecurityFromQuote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/securities/{security_id}": {
       "get": {
         "tags": [
@@ -1492,6 +1578,158 @@
           }
         }
       }
+    },
+    "/api/v1/market/quote": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Quote",
+        "operationId": "quote_api_v1_market_quote_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteDTO"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/quotes": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Quotes",
+        "operationId": "quotes_api_v1_market_quotes_get",
+        "parameters": [
+          {
+            "name": "symbols",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 2049,
+              "title": "Symbols"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/refresh": {
+      "post": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Refresh Quotes",
+        "operationId": "refresh_quotes_api_v1_market_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1663,6 +1901,19 @@
           "groups"
         ],
         "title": "GroupsDTO"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "ItemCreate": {
         "properties": {
@@ -1889,6 +2140,315 @@
         ],
         "title": "ModulesResponse"
       },
+      "QuoteDTO": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "HK",
+              "US"
+            ],
+            "title": "Market"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "HKD",
+              "USD"
+            ],
+            "title": "Currency"
+          },
+          "currency_basis": {
+            "type": "string",
+            "const": "MARKET_METADATA",
+            "title": "Currency Basis",
+            "default": "MARKET_METADATA"
+          },
+          "source": {
+            "type": "string",
+            "const": "tencent_public",
+            "title": "Source",
+            "default": "tencent_public"
+          },
+          "provider_symbol": {
+            "type": "string",
+            "title": "Provider Symbol"
+          },
+          "provider_exchange": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "SSE",
+                  "SZSE",
+                  "BSE",
+                  "HKEX",
+                  "NASDAQ",
+                  "NYSE",
+                  "AMEX"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Exchange"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "prev_close": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Close"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change"
+          },
+          "change_percent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Percent"
+          },
+          "market_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Timestamp"
+          },
+          "source_time_raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Time Raw"
+          },
+          "timestamp_semantics": {
+            "type": "string",
+            "const": "VENDOR_UPDATE_UNVERIFIED",
+            "title": "Timestamp Semantics",
+            "default": "VENDOR_UPDATE_UNVERIFIED"
+          },
+          "timestamp_timezone_basis": {
+            "type": "string",
+            "title": "Timestamp Timezone Basis",
+            "default": "UNVERIFIED"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "attempted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempted At"
+          },
+          "cache_age_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Age Seconds"
+          },
+          "market_status": {
+            "type": "string",
+            "enum": [
+              "MARKET_CLOSED",
+              "UNKNOWN"
+            ],
+            "title": "Market Status",
+            "default": "UNKNOWN"
+          },
+          "delay_status": {
+            "type": "string",
+            "const": "UNKNOWN",
+            "title": "Delay Status",
+            "default": "UNKNOWN"
+          },
+          "quality_status": {
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "MARKET_CLOSED",
+              "STALE",
+              "UNAVAILABLE",
+              "INVALID"
+            ],
+            "title": "Quality Status",
+            "default": "UNAVAILABLE"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuoteError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observation_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Observation Only",
+            "default": true
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "market",
+          "currency",
+          "provider_symbol"
+        ],
+        "title": "QuoteDTO"
+      },
+      "QuoteError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "QuoteError"
+      },
+      "QuotesResponse": {
+        "properties": {
+          "quotes": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteDTO"
+            },
+            "type": "array",
+            "title": "Quotes"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "observation_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Observation Only",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "quotes",
+          "checked_at"
+        ],
+        "title": "QuotesResponse"
+      },
+      "RefreshRequest": {
+        "properties": {
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Symbols"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbols"
+        ],
+        "title": "RefreshRequest"
+      },
       "SecurityCreate": {
         "properties": {
           "symbol": {
@@ -1999,7 +2559,10 @@
           },
           "source": {
             "type": "string",
-            "const": "MANUAL",
+            "enum": [
+              "MANUAL",
+              "TENCENT_LOOKUP"
+            ],
             "title": "Source"
           },
           "created_at": {
@@ -2028,6 +2591,51 @@
           "updated_at"
         ],
         "title": "SecurityDTO"
+      },
+      "SecurityFromQuote": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Symbol"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "SSE",
+                  "SZSE",
+                  "BSE",
+                  "HKEX",
+                  "NASDAQ",
+                  "NYSE",
+                  "AMEX"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "security_type": {
+            "type": "string",
+            "enum": [
+              "STOCK",
+              "ETF",
+              "ADR"
+            ],
+            "title": "Security Type",
+            "default": "STOCK"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "SecurityFromQuote"
       },
       "SecurityPage": {
         "properties": {
@@ -2161,13 +2769,57 @@
           },
           "status": {
             "type": "string",
-            "const": "disabled",
+            "enum": [
+              "disabled",
+              "waiting",
+              "idle",
+              "success",
+              "partial",
+              "error",
+              "stale",
+              "unknown"
+            ],
             "title": "Status",
             "default": "disabled"
           },
           "detail": {
             "type": "string",
             "title": "Detail"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "symbol_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol Count"
           }
         },
         "type": "object",
@@ -2176,6 +2828,46 @@
           "detail"
         ],
         "title": "TaskStatus"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       }
     },
     "securitySchemes": {

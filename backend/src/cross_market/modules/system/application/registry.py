@@ -4,7 +4,13 @@ MODULES = tuple(
     ModuleInfo(name=name, label=label, tier=tier, status=status, description=description)
     for name, label, tier, status, description in [
         ("securities", "证券主数据", "B", "foundation", "手工证券主数据及统一代码管理"),
-        ("market_data", "行情数据", "A", "planned", "数据源准入和行情采集尚未实施"),
+        (
+            "market_data",
+            "行情数据",
+            "A",
+            "foundation",
+            "真实报价观察、共享缓存与自选采集；实时预警未启用",
+        ),
         ("market_calendar", "交易日历", "B", "planned", "交易时段及节假日管理尚未实施"),
         ("watchlist", "自选管理", "C", "foundation", "自选分组、证券关注及排序管理"),
         ("portfolio", "资产持仓", "A", "planned", "持仓及交易事实管理尚未实施"),

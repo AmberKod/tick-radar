@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from cross_market.apps.api.bootstrap import register_modules
 from cross_market.apps.api.middleware import register_middleware
+from cross_market.modules.market_data.application.service import QuoteService
 from cross_market.modules.system.application.health import HealthService
 from cross_market.modules.system.infrastructure.probes import InfrastructureProbes
 from cross_market.shared.config import Settings
@@ -34,7 +36,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             InfrastructureProbes(engine, redis, settings), settings.version
         )
         try:
-            yield
+            async with httpx.AsyncClient(timeout=httpx.Timeout(6, connect=2)) as client:
+                app.state.quote_service = QuoteService(client, redis, settings)
+                yield
         finally:
             try:
                 await redis.aclose()

@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:6379/0")
     probe_timeout_seconds: float = Field(default=1, gt=0)
     cors_origins: list[str] = ["http://127.0.0.1:15173"]
+    market_observation_enabled: bool = True
+    quote_refresh_interval_seconds: int = Field(default=30, ge=10, le=300)
+    quote_max_symbols: int = Field(default=50, ge=1, le=50)
     worker_name: str = "main"
     worker_lock_key: str = "lock:worker:main"
     worker_heartbeat_key: str = "health:worker:main"
