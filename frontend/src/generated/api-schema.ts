@@ -384,6 +384,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/indicators/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Daily Indicators */
+        post: operations["daily_indicators_api_v1_indicators_daily_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -414,6 +431,46 @@ export interface components {
             mysql: components["schemas"]["ComponentStatus"];
             redis: components["schemas"]["ComponentStatus"];
             worker: components["schemas"]["ComponentStatus"];
+        };
+        /** DailyIndicatorsResponse */
+        DailyIndicatorsResponse: {
+            history: components["schemas"]["HistoryResponse"];
+            parameters: components["schemas"]["IndicatorParameters"];
+            /**
+             * Algorithm Version
+             * @default daily-v1
+             * @constant
+             */
+            algorithm_version: "daily-v1";
+            /** Parameter Hash */
+            parameter_hash: string;
+            /** Source Bars */
+            source_bars: number;
+            /** Warmup Bars */
+            warmup_bars: number;
+            /** Warmup Requested */
+            warmup_requested: number;
+            /** Visible Bars */
+            visible_bars: number;
+            /** Points */
+            points: components["schemas"]["IndicatorPoint"][];
+            /** As Of */
+            as_of: string | null;
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Warnings */
+            warnings: string[];
+            /**
+             * Observation Only
+             * @default true
+             * @constant
+             */
+            observation_only: true;
+            /** Formula Notes */
+            formula_notes: string[];
         };
         /** ErrorResponse */
         ErrorResponse: {
@@ -543,6 +600,90 @@ export interface components {
             history_complete: boolean;
             /** Coverage Reason */
             coverage_reason: string;
+        };
+        /** IndicatorParameters */
+        IndicatorParameters: {
+            /**
+             * Ma Period
+             * @default 10
+             */
+            ma_period: number;
+            /**
+             * Macd Fast
+             * @default 6
+             */
+            macd_fast: number;
+            /**
+             * Macd Slow
+             * @default 13
+             */
+            macd_slow: number;
+            /**
+             * Macd Signal
+             * @default 5
+             */
+            macd_signal: number;
+            /**
+             * Kdj Lookback
+             * @default 13
+             */
+            kdj_lookback: number;
+            /**
+             * Kdj K
+             * @default 5
+             */
+            kdj_k: number;
+            /**
+             * Kdj D
+             * @default 5
+             */
+            kdj_d: number;
+            /**
+             * Atr Period
+             * @default 14
+             */
+            atr_period: number;
+        };
+        /** IndicatorPoint */
+        IndicatorPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Ma */
+            ma: string | null;
+            /** Dif */
+            dif: string | null;
+            /** Dea */
+            dea: string | null;
+            /** Macd */
+            macd: string | null;
+            /** K */
+            k: string | null;
+            /** D */
+            d: string | null;
+            /** J */
+            j: string | null;
+            /** Atr */
+            atr: string | null;
+        };
+        /** IndicatorRequest */
+        IndicatorRequest: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Limit
+             * @default 120
+             */
+            limit: number;
+            /**
+             * Adjustment
+             * @default raw
+             * @enum {string}
+             */
+            adjustment: "raw" | "qfq" | "hfq";
+            parameters?: components["schemas"]["IndicatorParameters"];
         };
         /** ItemCreate */
         ItemCreate: {
@@ -2517,6 +2658,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    daily_indicators_api_v1_indicators_daily_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IndicatorRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyIndicatorsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -11,7 +11,7 @@ const route = reactive<{ query: { symbol?: string } }>({ query: {} })
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => routing }))
 vi.mock('lightweight-charts', () => ({
   CandlestickSeries: 'candlestick', HistogramSeries: 'histogram', ColorType: { Solid: 'solid' },
-  createChart: () => ({ addSeries: () => ({ setData: chart.setData }), panes: () => [{}, { setHeight: vi.fn() }], subscribeCrosshairMove: chart.hover, timeScale: () => ({ fitContent: chart.fitContent }), remove: chart.remove, resize: chart.resize }),
+  createChart: () => ({ addSeries: () => ({ setData: chart.setData }), panes: () => [{ setStretchFactor: vi.fn() }, { setHeight: vi.fn(), setStretchFactor: vi.fn() }], subscribeCrosshairMove: chart.hover, timeScale: () => ({ fitContent: chart.fitContent }), remove: chart.remove, resize: chart.resize }),
 }))
 vi.mock('naive-ui', () => ({
   NButton: { props: ['disabled', 'attrType'], template: '<button :disabled="disabled" :type="attrType || \'button\'"><slot /></button>' },

@@ -1,4 +1,7 @@
 import type { components } from '../../../generated/api-schema'
+export type IndicatorParameters = components['schemas']['IndicatorParameters']
+export type IndicatorPoint = components['schemas']['IndicatorPoint']
+export type DailyIndicatorsResponse = components['schemas']['DailyIndicatorsResponse']
 export type HistoryResponse = components['schemas']['HistoryResponse']
 export type HistoryBar = components['schemas']['HistoryBar']
 export type HistoryAdjustment = HistoryResponse['adjustment']
