@@ -1,4 +1,8 @@
 import type { components } from '../../../generated/api-schema'
+export type MinuteBar = components['schemas']['MinuteBar']
+export type MinuteHistoryResponse = components['schemas']['MinuteHistoryResponse']
+export type MinuteIndicatorPoint = components['schemas']['MinuteIndicatorPoint']
+export type MinuteIndicatorsResponse = components['schemas']['MinuteIndicatorsResponse']
 export type IndicatorParameters = components['schemas']['IndicatorParameters']
 export type IndicatorPoint = components['schemas']['IndicatorPoint']
 export type DailyIndicatorsResponse = components['schemas']['DailyIndicatorsResponse']

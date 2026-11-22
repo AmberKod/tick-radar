@@ -1,7 +1,9 @@
 import { apiGet, apiPost, type RequestOptions } from '../../../shared/api/client'
-import type { DailyIndicatorsResponse, IndicatorParameters, Group, HistoryAdjustment, HistoryResponse, Item, MarketCalendarStatuses, QuoteDTO, QuoteList, SecurityFromQuote, SecurityFromQuoteInput } from '../types'
+import type { MinuteHistoryResponse, MinuteIndicatorsResponse, DailyIndicatorsResponse, IndicatorParameters, Group, HistoryAdjustment, HistoryResponse, Item, MarketCalendarStatuses, QuoteDTO, QuoteList, SecurityFromQuote, SecurityFromQuoteInput } from '../types'
 export const getHistory = (symbol: string, limit: number, adjustment: HistoryAdjustment, options?: RequestOptions) => apiGet<HistoryResponse>(`/market/history?${new URLSearchParams({ symbol, limit: String(limit), adjustment })}`, { timeoutMs: 15_000, ...options })
 export const getIndicators = (symbol: string, limit: number, adjustment: HistoryAdjustment, parameters: IndicatorParameters, options?: RequestOptions) => apiPost<DailyIndicatorsResponse>('/indicators/daily', { symbol, limit, adjustment, parameters }, { timeoutMs: 15_000, ...options })
+export const getMinuteHistory = (symbol: string, limit: number, options?: RequestOptions) => apiGet<MinuteHistoryResponse>(`/market/history/minute?${new URLSearchParams({ symbol, limit: String(limit) })}`, { timeoutMs: 15_000, ...options })
+export const getMinuteIndicators = (symbol: string, limit: number, parameters: IndicatorParameters, options?: RequestOptions) => apiPost<MinuteIndicatorsResponse>('/indicators/minute', { symbol, limit, parameters }, { timeoutMs: 15_000, ...options })
 export const getCalendarStatuses = (options?: RequestOptions) => apiGet<MarketCalendarStatuses>('/market-calendar/statuses', options)
 export const getQuote = (symbol: string, options?: RequestOptions) => apiGet<QuoteDTO>(`/market/quote?${new URLSearchParams({ symbol })}`, options)
 export const getQuotes = (symbols: string[], options?: RequestOptions) => apiGet<QuoteList>(`/market/quotes?${new URLSearchParams({ symbols: symbols.join(',') })}`, options)

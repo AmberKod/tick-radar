@@ -71,14 +71,14 @@ describe('公共历史日线', () => {
   it('查询提交根数和复权，示例只携带symbol路由参数', async () => {
     const wrapper = mount(HistoryPage)
     await wrapper.find('input').setValue('hk:00700')
-    await wrapper.findAll('select')[0]!.setValue('250')
-    await wrapper.findAll('select')[1]!.setValue('qfq')
+    await wrapper.find('select[aria-label="历史根数"]').setValue('250')
+    await wrapper.find('select[aria-label="复权方式"]').setValue('qfq')
     await wrapper.find('form').trigger('submit'); await flushPromises()
-    expect(routing.push).toHaveBeenCalledWith({ path: '/market/history', query: { symbol: 'HK:00700' } })
+    expect(routing.push).toHaveBeenCalledWith({ path: '/market/history', query: { symbol: 'HK:00700', indicators: 'off' } })
     expect(fetch).toHaveBeenCalledWith('/api/v1/market/history?symbol=HK%3A00700&limit=250&adjustment=qfq', expect.anything())
     const sample = wrapper.findAll('button').find(button => button.text() === 'CN:600519')!
     await sample.trigger('click'); await flushPromises()
-    expect(routing.push).toHaveBeenLastCalledWith({ path: '/market/history', query: { symbol: 'CN:600519' } })
+    expect(routing.push).toHaveBeenLastCalledWith({ path: '/market/history', query: { symbol: 'CN:600519', indicators: 'off' } })
     wrapper.unmount()
   })
   it('切换代码取消旧请求且迟到旧响应不能覆盖新图', async () => {
@@ -98,7 +98,7 @@ describe('公共历史日线', () => {
     route.query = { symbol: 'US:AAPL', indicators: 'off' }
     const wrapper = mount(HistoryPage); await flushPromises()
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ message: '供应商不支持美股后复权', code: 'ADJUSTMENT_UNSUPPORTED' }), { status: 422 }))
-    await wrapper.findAll('select')[1]!.setValue('hfq')
+    await wrapper.find('select[aria-label="复权方式"]').setValue('hfq')
     await wrapper.find('form').trigger('submit'); await flushPromises()
     expect(chart.remove).toHaveBeenCalledOnce()
     expect(wrapper.findComponent(HistoryChart).exists()).toBe(false)

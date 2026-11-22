@@ -2,14 +2,19 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NAlert, NButton, NInput, NSelect } from 'naive-ui'
-import { getHistory, getIndicators } from '../api'
+import { getHistory, getIndicators, getMinuteHistory, getMinuteIndicators } from '../api'
 import { ApiError } from '../../../shared/api/client'
-import type { DailyIndicatorsResponse, IndicatorParameters, HistoryAdjustment, HistoryResponse } from '../types'
+import type { DailyIndicatorsResponse, IndicatorParameters, HistoryAdjustment, HistoryResponse, MinuteHistoryResponse, MinuteIndicatorsResponse, HistoryBar, MinuteBar, IndicatorPoint, MinuteIndicatorPoint } from '../types'
 import HistoryChart from '../components/HistoryChart.vue'
 const route = useRoute(), router = useRouter()
 const symbol = ref(''), limit = ref(120), adjustment = ref<HistoryAdjustment>('raw')
-const result = ref<HistoryResponse | null>(null), error = ref(''), loading = ref(false)
-const indicatorsEnabled = ref(route.query.indicators !== 'off'), indicators = ref<DailyIndicatorsResponse | null>(null)
+const period = ref<'day' | 'm15'>(route.query.period === 'm15' ? 'm15' : 'day')
+const title = computed(() => period.value === 'm15' ? '历史15分钟' : '历史日线')
+const result = ref<HistoryResponse | MinuteHistoryResponse | null>(null), error = ref(''), loading = ref(false)
+const indicatorsEnabled = ref(route.query.indicators !== 'off'), indicators = ref<DailyIndicatorsResponse | MinuteIndicatorsResponse | null>(null)
+const latest = computed(() => result.value && ('latest_timestamp' in result.value ? result.value.latest_timestamp ? time(result.value.latest_timestamp) : '暂无时间' : result.value.latest_date || '暂无日期'))
+const earliest = computed(() => result.value && 'earliest_timestamp' in result.value && result.value.earliest_timestamp ? time(result.value.earliest_timestamp) : '')
+function barKey(bar: HistoryBar | MinuteBar | IndicatorPoint | MinuteIndicatorPoint) { return 'timestamp' in bar ? bar.timestamp : bar.date }
 const importantWarnings = computed(() => indicators.value?.warnings.filter(warning => /预热不足|未达到|缺失/.test(warning)) || [])
 const shortParameters: IndicatorParameters = { ma_period: 10, macd_fast: 6, macd_slow: 13, macd_signal: 5, kdj_lookback: 13, kdj_k: 5, kdj_d: 5, atr_period: 14 }
 const standardParameters: IndicatorParameters = { ma_period: 20, macd_fast: 12, macd_slow: 26, macd_signal: 9, kdj_lookback: 9, kdj_k: 3, kdj_d: 3, atr_period: 14 }
@@ -21,13 +26,17 @@ const parameterFields: { key: keyof IndicatorParameters; label: string; min: num
   { key: 'atr_period', label: 'ATR 周期', min: 2, max: 120 },
 ]
 const parameterError = computed(() => {
+  if (period.value === 'm15' && limit.value > 320) return '15分钟历史最多支持 320 根；请明确改选根数。'
   if (!indicatorsEnabled.value) return ''
-  if (limit.value > 500) return '计算日线指标最多支持 500 根，以保留预热数据；请明确改选 500 根或关闭指标。'
+  if (period.value === 'm15' && limit.value > 250) return '计算15分钟指标最多支持 250 根，以保留预热数据；请明确改选 250 根或关闭指标。'
+  if (period.value === 'day' && limit.value > 500) return '计算日线指标最多支持 500 根，以保留预热数据；请明确改选 500 根或关闭指标。'
   if (parameterFields.some(field => !Number.isInteger(parameters.value[field.key]) || parameters.value[field.key] < field.min || parameters.value[field.key] > field.max)) return '指标参数必须为指定范围内的整数。'
   return parameters.value.macd_fast >= parameters.value.macd_slow ? 'MACD 快线周期必须小于慢线周期。' : ''
 })
 let revision = 0, controller: AbortController | undefined
-const limits = [60, 120, 250, 500, 640].map(value => ({ label: `${value} 根`, value }))
+const limits = computed(() => (period.value === 'm15' ? [60, 120, 250, 320] : [60, 120, 250, 500, 640]).map(value => ({ label: `${value} 根`, value })))
+const periods = [{ label: '日线', value: 'day' }, { label: '15分钟', value: 'm15' }]
+const minuteAdjustments = [{ label: '供应商原始口径（未经核验）', value: 'vendor_unverified' }]
 const adjustments = [{ label: '不复权', value: 'raw' }, { label: '前复权', value: 'qfq' }, { label: '后复权', value: 'hfq' }]
 const adjustmentLabels = { raw: '不复权', qfq: '前复权', hfq: '后复权' }
 async function load(value: string) {
@@ -37,20 +46,22 @@ async function load(value: string) {
   symbol.value = value.trim().toUpperCase()
   if (!symbol.value) return
   if (!/^(CN:\d{6}|HK:\d{5}|US:[A-Z][A-Z0-9.-]*)$/.test(symbol.value)) { error.value = '请输入标准证券代码，例如 CN:600519、HK:00700 或 US:AAPL。'; return }
+  if (period.value === 'm15' && (!symbol.value.startsWith('CN:') || /^CN:(4|8|92)/.test(symbol.value))) { error.value = '15分钟历史仅支持沪深证券（CN:600519、CN:000001），暂不支持港股、美股和北交所（MINUTE_MARKET_UNSUPPORTED）。'; return }
   if (parameterError.value) { error.value = parameterError.value; return }
-  const requestedSymbol = symbol.value, requestedAdjustment = adjustment.value
+  const requestedSymbol = symbol.value, requestedAdjustment = adjustment.value, requestedPeriod = period.value
   loading.value = true
   try {
-    const calculated = indicatorsEnabled.value ? await getIndicators(requestedSymbol, limit.value, requestedAdjustment, { ...parameters.value }, { signal: controller.signal }) : null
-    const data = calculated ? calculated.history : await getHistory(requestedSymbol, limit.value, requestedAdjustment, { signal: controller.signal })
+    const options = { signal: controller.signal }
+    const calculated = indicatorsEnabled.value ? requestedPeriod === 'm15' ? await getMinuteIndicators(requestedSymbol, limit.value, { ...parameters.value }, options) : await getIndicators(requestedSymbol, limit.value, requestedAdjustment, { ...parameters.value }, options) : null
+    const data = calculated ? calculated.history : requestedPeriod === 'm15' ? await getMinuteHistory(requestedSymbol, limit.value, options) : await getHistory(requestedSymbol, limit.value, requestedAdjustment, options)
     if (current !== revision) return
-    if (calculated && (data.symbol !== requestedSymbol || data.adjustment !== requestedAdjustment)) throw new Error('指标响应证券或复权方式不匹配，请重新查询。')
-    const valid = data.bars.every(bar => /^\d{4}-\d{2}-\d{2}$/.test(bar.date) && [bar.open, bar.high, bar.low, bar.close].every(value => value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) > 0) && bar.volume.trim() !== '' && Number.isFinite(Number(bar.volume)) && Number(bar.volume) >= 0)
-    const ordered = data.bars.every((bar, index) => index === 0 || bar.date > data.bars[index - 1]!.date)
-    if (!valid || !ordered) throw new Error('历史数据格式异常，无法绘制日线，请稍后重试。')
+    if ((calculated || requestedPeriod === 'm15') && (data.symbol !== requestedSymbol || data.period !== requestedPeriod || data.adjustment !== (requestedPeriod === 'm15' ? 'vendor_unverified' : requestedAdjustment))) throw new Error('指标响应证券、周期或复权方式不匹配，请重新查询。')
+    const valid = data.bars.every(bar => ('timestamp' in bar ? /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(bar.timestamp) && Number.isFinite(Date.parse(bar.timestamp)) : /^\d{4}-\d{2}-\d{2}$/.test(bar.date)) && [bar.open, bar.high, bar.low, bar.close].every(value => value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) > 0) && bar.volume.trim() !== '' && Number.isFinite(Number(bar.volume)) && Number(bar.volume) >= 0)
+    const ordered = data.bars.every((bar, index) => index === 0 || ('timestamp' in bar ? Date.parse(bar.timestamp) > Date.parse(barKey(data.bars[index - 1]!)) : barKey(bar) > barKey(data.bars[index - 1]!)))
+    if (!valid || !ordered) throw new Error('历史数据格式异常，无法绘制K线，请稍后重试。')
     if (calculated) {
       const values = ['ma', 'dif', 'dea', 'macd', 'k', 'd', 'j', 'atr'] as const
-      if (calculated.points.length !== data.bars.length || !calculated.points.every((point, index) => point.date === data.bars[index]!.date && values.every(key => point[key] === null || (typeof point[key] === 'string' && point[key].trim() !== '' && Number.isFinite(Number(point[key])))))) throw new Error('指标数据格式异常或日期未对齐，无法绘图。')
+      if (calculated.points.length !== data.bars.length || !calculated.points.every((point, index) => barKey(point) === barKey(data.bars[index]!) && values.every(key => point[key] === null || (typeof point[key] === 'string' && point[key].trim() !== '' && Number.isFinite(Number(point[key])))))) throw new Error('指标数据格式异常或日期未对齐，无法绘图。')
       indicators.value = calculated
     }
     result.value = data
@@ -61,11 +72,16 @@ async function load(value: string) {
 }
 async function lookup(value = symbol.value) {
   const next = value.trim().toUpperCase()
-  if (route.query.symbol !== next) await router.push({ path: '/market/history', query: next ? { symbol: next } : {} })
+  const query = { ...(next ? { symbol: next } : {}), ...(period.value === 'm15' ? { period: 'm15' } : {}), ...(!indicatorsEnabled.value ? { indicators: 'off' } : {}) }
+  if (route.query.symbol !== next || route.query.period !== query.period || route.query.indicators !== query.indicators) await router.push({ path: '/market/history', query })
   else await load(next)
 }
 watch(indicatorsEnabled, () => { if (symbol.value.trim()) void load(symbol.value) })
-watch(() => route.query.symbol, value => { void load(typeof value === 'string' ? value : '') }, { immediate: true })
+watch(period, value => { if (value !== (route.query.period === 'm15' ? 'm15' : 'day')) void lookup() })
+watch(() => [route.query.symbol, route.query.period, route.query.indicators], ([value, requestedPeriod]) => {
+  period.value = requestedPeriod === 'm15' ? 'm15' : 'day'
+  void load(typeof value === 'string' ? value : '')
+}, { immediate: true })
 onBeforeUnmount(() => { ++revision; controller?.abort() })
 function time(value: string) {
   const parsed = new Date(value)
@@ -74,13 +90,15 @@ function time(value: string) {
 </script>
 <template>
   <div class="business-page history-page">
-    <section class="page-heading"><div><div class="eyebrow">MARKET HISTORY</div><h1>历史日线</h1><p>公共历史数据，只读观察；历史数据不是实时行情。休市期间仍可查询。</p></div></section>
+    <section class="page-heading"><div><div class="eyebrow">MARKET HISTORY</div><h1>{{ title }}</h1><p>公共历史数据，只读观察；历史数据不是实时行情。休市期间仍可查询。</p></div></section>
     <section class="panel business-panel">
       <form class="toolbar history-form" @submit.prevent="lookup()">
         <NInput v-model:value="symbol" placeholder="CN:600519、HK:00700、US:AAPL" aria-label="历史证券代码" />
         <NSelect v-model:value="limit" :options="limits" aria-label="历史根数" />
-        <NSelect v-model:value="adjustment" :options="adjustments" aria-label="复权方式" />
-        <NButton type="primary" attr-type="submit" :loading="loading" :disabled="!symbol.trim() || !!parameterError">查询历史日线</NButton>
+        <NSelect v-model:value="period" :options="periods" aria-label="周期" />
+        <NSelect v-if="period === 'day'" v-model:value="adjustment" :options="adjustments" aria-label="复权方式" />
+        <NSelect v-else value="vendor_unverified" :options="minuteAdjustments" disabled aria-label="复权方式" />
+        <NButton type="primary" attr-type="submit" :loading="loading" :disabled="!symbol.trim() || !!parameterError">{{ period === 'm15' ? '查询15分钟K线' : '查询历史日线' }}</NButton>
       </form>
       <label class="indicator-toggle"><input v-model="indicatorsEnabled" type="checkbox" /> 显示技术指标</label><span class="indicator-hint">默认显示 MA 与 MACD，图中可切换 KDJ / ATR；开关自动更新</span>
       <details v-if="indicatorsEnabled" class="indicator-settings">
@@ -89,30 +107,31 @@ function time(value: string) {
         <div class="parameter-grid"><label v-for="field in parameterFields" :key="field.key">{{ field.label }}<input v-model.number="parameters[field.key]" type="number" :min="field.min" :max="field.max" step="1" :aria-label="field.label" /></label></div>
       </details>
       <p v-if="parameterError" role="alert" class="parameter-error">{{ parameterError }}</p>
-      <div class="sample-actions"><span>示例代码</span><NButton v-for="sample in ['CN:600519', 'HK:00700', 'US:AAPL']" :key="sample" text @click="lookup(sample)">{{ sample }}</NButton></div>
-      <p class="muted">周期：日线 · 排除交易所当地日期为今天的 Bar · 成交量保留原始口径 · 美股暂不支持后复权</p>
+      <div class="sample-actions"><span>示例代码</span><NButton v-for="sample in ['CN:600519', 'CN:000001', 'HK:00700', 'US:AAPL']" :key="sample" text @click="lookup(sample)">{{ sample }}</NButton></div>
+      <p v-if="period === 'day'" class="muted">周期：日线 · 排除交易所当地日期为今天的 Bar · 成交量保留原始口径 · 美股暂不支持后复权</p>
+      <p v-else class="muted">周期：15分钟 · 仅支持沪深证券 · 供应商复权口径未经核验 · 时间标签起止含义未经确认 · 保守排除距当前不足15分钟的 Bar；不代表历史连续性，不自动刷新。</p>
     </section>
-    <NAlert v-if="error" type="error" title="历史日线读取失败" role="alert">{{ error }}</NAlert>
-    <p v-if="loading" class="small-empty" role="status">正在读取历史日线…</p>
+    <NAlert v-if="error" type="error" :title="`${title}读取失败`" role="alert">{{ error }}</NAlert>
+    <p v-if="loading" class="small-empty" role="status">正在读取{{ title }}…</p>
     <section v-if="result" class="panel business-panel">
-      <h2>{{ result.symbol }} · 历史日线</h2>
-      <div class="history-meta"><span>历史截至 {{ result.latest_date || '暂无日期' }}</span><span>实际 {{ result.actual_count }} 根 / 请求 {{ result.requested_limit }} 根</span><span>来源 {{ result.source }}</span><span>{{ adjustmentLabels[result.adjustment] }} · {{ result.market }} · {{ result.currency }}</span><span>采集时间 {{ time(result.checked_at) }}</span><span>数据截至 {{ result.data_as_of || '暂无日期' }}</span></div>
+      <h2>{{ result.symbol }} · {{ title }}</h2>
+      <div class="history-meta"><span>历史截至 {{ latest }}</span><span>实际 {{ result.actual_count }} 根 / 请求 {{ result.requested_limit }} 根</span><span>来源 {{ result.source }}</span><span>{{ result.adjustment === 'vendor_unverified' ? '供应商原始口径（未经核验）' : adjustmentLabels[result.adjustment] }} · {{ result.market }} · {{ result.currency }}</span><span>采集时间 {{ time(result.checked_at) }}</span><span>数据截至 {{ result.data_as_of ? period === 'm15' ? time(result.data_as_of) : result.data_as_of : '暂无日期' }}</span><span v-if="earliest">历史起点 {{ earliest }}</span></div>
       <NAlert v-if="!result.history_complete || result.actual_count < result.requested_limit" type="warning">历史覆盖不足：{{ result.coverage_reason || '数据源返回的历史根数少于请求根数。' }}</NAlert>
       <details class="history-source-details"><summary>数据来源与口径说明</summary><p v-for="warning in result.warnings || []" :key="warning">{{ warning }}</p></details>
       <section v-if="indicators" class="indicator-metadata">
-        <h3>已计算指标 · {{ indicators.algorithm_version }}</h3>
-        <p>数据截至 {{ indicators.as_of || '暂无日期' }} · 计算时间 {{ time(indicators.calculated_at) }}</p>
+        <h3>{{ period === 'm15' ? '15分钟指标' : '已计算指标' }} · {{ indicators.algorithm_version }}</h3>
+        <p>数据截至 {{ indicators.as_of ? period === 'm15' ? time(indicators.as_of) : indicators.as_of : '暂无日期' }} · 计算时间 {{ time(indicators.calculated_at) }}</p>
         <p>来源 {{ indicators.source_bars }} 根 · 实际预热 {{ indicators.warmup_bars }} 根 / 请求预热 {{ indicators.warmup_requested }} 根 · 展示 {{ indicators.visible_bars }} 根</p>
         <p>实际参数：MA {{ indicators.parameters.ma_period }}；MACD {{ indicators.parameters.macd_fast }}/{{ indicators.parameters.macd_slow }}/{{ indicators.parameters.macd_signal }}；KDJ {{ indicators.parameters.kdj_lookback }}/{{ indicators.parameters.kdj_k }}/{{ indicators.parameters.kdj_d }}；ATR {{ indicators.parameters.atr_period }}</p>
         <NAlert v-for="warning in importantWarnings" :key="warning" type="warning">{{ warning }}</NAlert>
         <details class="indicator-notes"><summary>指标公式与计算口径</summary><p class="parameter-hash">参数摘要 {{ indicators.parameter_hash }}</p><p v-for="note in indicators.formula_notes" :key="note">{{ note }}</p><p v-for="warning in indicators.warnings" :key="warning">{{ warning }}</p></details>
         <p>仅用于观察，不提供买卖信号。</p>
       </section>
-      <HistoryChart v-if="result.bars.length" :key="`${result.symbol}-${result.adjustment}-${result.requested_limit}-${result.checked_at}-${indicators?.parameter_hash || ''}-${indicators?.calculated_at || ''}`" :bars="result.bars" :points="indicators?.points" :parameters="indicators?.parameters" />
-      <p v-else class="small-empty">暂无可用历史日线，请更换标的或稍后重试。</p>
+      <HistoryChart v-if="result.bars.length" :key="`${result.symbol}-${result.adjustment}-${result.requested_limit}-${result.checked_at}-${indicators?.parameter_hash || ''}-${indicators?.calculated_at || ''}`" :period="period" :bars="result.bars" :points="indicators?.points" :parameters="indicators?.parameters" />
+      <p v-else class="small-empty">暂无可用{{ title }}，请更换标的或稍后重试。</p>
       <p class="muted">仅用于观察。历史数据不是实时行情，不拼接当前报价。</p>
     </section>
-    <p v-else-if="!loading && !error" class="small-empty">输入标准证券代码或点击示例，查询历史日线。</p>
+    <p v-else-if="!loading && !error" class="small-empty">输入标准证券代码或点击示例，查询{{ title }}。</p>
   </div>
 </template>
 <style scoped>
@@ -125,7 +144,7 @@ function time(value: string) {
 .parameter-error { color: #d03050; }
 .indicator-metadata { font-size: 13px; line-height: 1.8; }
 .parameter-hash { overflow-wrap: anywhere; }
-.history-form { display: grid; grid-template-columns: minmax(220px, 1fr) 120px 140px auto; }
+.history-form { display: grid; grid-template-columns: minmax(200px, 1fr) 110px 110px minmax(160px, auto) auto; }
 .history-meta { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 16px 0; color: #596579; font-size: 13px; }
 .history-source-details { margin: 12px 0 18px; color: #596579; font-size: 12px; line-height: 1.8; }
 .history-source-details summary { cursor: pointer; }

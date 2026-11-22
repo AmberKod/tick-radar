@@ -299,6 +299,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/market/history/minute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Minute History */
+        get: operations["minute_history_api_v1_market_history_minute_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/market/quote": {
         parameters: {
             query?: never;
@@ -378,6 +395,23 @@ export interface paths {
         get: operations["statuses_api_v1_market_calendar_statuses_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/indicators/minute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Minute Indicators */
+        post: operations["minute_indicators_api_v1_indicators_minute_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -850,6 +884,177 @@ export interface components {
              * Format: date-time
              */
             checked_at: string;
+        };
+        /** MinuteBar */
+        MinuteBar: {
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Source Time Raw */
+            source_time_raw: string;
+            /** Open */
+            open: string;
+            /** High */
+            high: string;
+            /** Low */
+            low: string;
+            /** Close */
+            close: string;
+            /** Volume */
+            volume: string;
+        };
+        /** MinuteHistoryResponse */
+        MinuteHistoryResponse: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Market
+             * @default CN
+             * @constant
+             */
+            market: "CN";
+            /**
+             * Currency
+             * @default CNY
+             * @constant
+             */
+            currency: "CNY";
+            /**
+             * Source
+             * @default tencent_minute_public
+             * @constant
+             */
+            source: "tencent_minute_public";
+            /**
+             * Period
+             * @default m15
+             * @constant
+             */
+            period: "m15";
+            /**
+             * Adjustment
+             * @default vendor_unverified
+             * @constant
+             */
+            adjustment: "vendor_unverified";
+            /**
+             * Timezone
+             * @default Asia/Shanghai
+             * @constant
+             */
+            timezone: "Asia/Shanghai";
+            /**
+             * Timestamp Semantics
+             * @default VENDOR_BAR_LABEL_UNVERIFIED
+             * @constant
+             */
+            timestamp_semantics: "VENDOR_BAR_LABEL_UNVERIFIED";
+            /** Bars */
+            bars: components["schemas"]["MinuteBar"][];
+            /** Requested Limit */
+            requested_limit: number;
+            /** Actual Count */
+            actual_count: number;
+            /** Earliest Timestamp */
+            earliest_timestamp: string | null;
+            /** Latest Timestamp */
+            latest_timestamp: string | null;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /** Data As Of */
+            data_as_of: string | null;
+            /**
+             * Observation Only
+             * @default true
+             * @constant
+             */
+            observation_only: true;
+            /** History Complete */
+            history_complete: boolean;
+            /** Coverage Reason */
+            coverage_reason: string;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** MinuteIndicatorPoint */
+        MinuteIndicatorPoint: {
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Ma */
+            ma: string | null;
+            /** Dif */
+            dif: string | null;
+            /** Dea */
+            dea: string | null;
+            /** Macd */
+            macd: string | null;
+            /** K */
+            k: string | null;
+            /** D */
+            d: string | null;
+            /** J */
+            j: string | null;
+            /** Atr */
+            atr: string | null;
+        };
+        /** MinuteIndicatorRequest */
+        MinuteIndicatorRequest: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Limit
+             * @default 120
+             */
+            limit: number;
+            parameters?: components["schemas"]["IndicatorParameters"];
+        };
+        /** MinuteIndicatorsResponse */
+        MinuteIndicatorsResponse: {
+            history: components["schemas"]["MinuteHistoryResponse"];
+            parameters: components["schemas"]["IndicatorParameters"];
+            /**
+             * Algorithm Version
+             * @default m15-v1
+             * @constant
+             */
+            algorithm_version: "m15-v1";
+            /** Parameter Hash */
+            parameter_hash: string;
+            /** Source Bars */
+            source_bars: number;
+            /** Warmup Bars */
+            warmup_bars: number;
+            /** Warmup Requested */
+            warmup_requested: number;
+            /** Visible Bars */
+            visible_bars: number;
+            /** Points */
+            points: components["schemas"]["MinuteIndicatorPoint"][];
+            /** As Of */
+            as_of: string | null;
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Warnings */
+            warnings: string[];
+            /** Formula Notes */
+            formula_notes: string[];
+            /**
+             * Observation Only
+             * @default true
+             * @constant
+             */
+            observation_only: true;
         };
         /** ModuleInfo */
         ModuleInfo: {
@@ -2460,6 +2665,38 @@ export interface operations {
             };
         };
     };
+    minute_history_api_v1_market_history_minute_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinuteHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     quote_api_v1_market_quote_get: {
         parameters: {
             query: {
@@ -2658,6 +2895,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    minute_indicators_api_v1_indicators_minute_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MinuteIndicatorRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinuteIndicatorsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

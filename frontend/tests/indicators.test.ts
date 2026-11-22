@@ -65,10 +65,10 @@ describe('日线指标', () => {
   })
   it('640根、非整数与快慢线倒置阻止请求；标准按钮可恢复', async () => {
     const wrapper = await enable()
-    await wrapper.findAll('select')[0]!.setValue('640')
+    await wrapper.find('select[aria-label="历史根数"]').setValue('640')
     await wrapper.find('form').trigger('submit'); await flushPromises()
     expect(wrapper.text()).toContain('最多支持 500 根'); expect(fetch).not.toHaveBeenCalled()
-    await wrapper.findAll('select')[0]!.setValue('500')
+    await wrapper.find('select[aria-label="历史根数"]').setValue('500')
     await wrapper.find('input[aria-label="MACD 快线"]').setValue('13')
     expect(wrapper.text()).toContain('快线周期必须小于慢线周期')
     await wrapper.find('form').trigger('submit'); await flushPromises(); expect(fetch).not.toHaveBeenCalled()
