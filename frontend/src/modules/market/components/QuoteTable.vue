@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import { marketStateLabels, type QuoteDTO } from '../types'
 defineProps<{ quotes: QuoteDTO[]; emptyText?: string }>()
 function statusLabel(quote: QuoteDTO) {
@@ -21,7 +22,7 @@ function sourceTime(quote: QuoteDTO) {
 }
 </script>
 <template>
-  <div class="table-scroll market-table-scroll"><table class="data-table market-table"><thead><tr><th>证券</th><th>最新价</th><th>涨跌</th><th>涨跌幅</th><th>状态</th><th>报价来源 / 时间</th><th>采集时间</th></tr></thead><tbody><tr v-for="item in quotes" :key="item.symbol"><td><strong>{{ item.symbol }}</strong><small>{{ item.name || '—' }} · {{ item.currency }}</small></td><td class="price-cell">{{ item.price ?? '—' }}</td><td :class="item.change == null ? '' : Number(item.change) > 0 ? 'price-up' : Number(item.change) < 0 ? 'price-down' : ''">{{ item.change ?? '—' }}</td><td :class="item.change_percent == null ? '' : Number(item.change_percent) > 0 ? 'price-up' : Number(item.change_percent) < 0 ? 'price-down' : ''">{{ item.change_percent == null ? '—' : `${item.change_percent}%` }}</td><td><span :title="[item.market_state_reason, item.market_state_basis].filter(Boolean).join(' · ')">{{ marketStateLabels[item.market_state || 'UNKNOWN'] }}</span><small>{{ statusLabel(item) }}</small><small v-if="item.delay_status === 'UNKNOWN'">延迟状态未知</small></td><td>{{ item.source }}<small>{{ sourceTime(item) }}</small></td><td>{{ time(item.received_at) }}</td></tr></tbody></table></div>
+  <div class="table-scroll market-table-scroll"><table class="data-table market-table"><thead><tr><th>证券</th><th>最新价</th><th>涨跌</th><th>涨跌幅</th><th>状态</th><th>报价来源 / 时间</th><th>采集时间</th></tr></thead><tbody><tr v-for="item in quotes" :key="item.symbol"><td><strong>{{ item.symbol }}</strong><small>{{ item.name || '—' }} · {{ item.currency }}</small><RouterLink :to="{ path: '/market/history', query: { symbol: item.symbol } }">历史K线</RouterLink></td><td class="price-cell">{{ item.price ?? '—' }}</td><td :class="item.change == null ? '' : Number(item.change) > 0 ? 'price-up' : Number(item.change) < 0 ? 'price-down' : ''">{{ item.change ?? '—' }}</td><td :class="item.change_percent == null ? '' : Number(item.change_percent) > 0 ? 'price-up' : Number(item.change_percent) < 0 ? 'price-down' : ''">{{ item.change_percent == null ? '—' : `${item.change_percent}%` }}</td><td><span :title="[item.market_state_reason, item.market_state_basis].filter(Boolean).join(' · ')">{{ marketStateLabels[item.market_state || 'UNKNOWN'] }}</span><small>{{ statusLabel(item) }}</small><small v-if="item.delay_status === 'UNKNOWN'">延迟状态未知</small></td><td>{{ item.source }}<small>{{ sourceTime(item) }}</small></td><td>{{ time(item.received_at) }}</td></tr></tbody></table></div>
   <p v-if="!quotes.length" class="small-empty">{{ emptyText || '暂无可显示的报价。' }}</p>
 </template>
 <style scoped>

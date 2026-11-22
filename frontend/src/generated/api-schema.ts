@@ -282,6 +282,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/market/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_api_v1_market_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/market/quote": {
         parameters: {
             query?: never;
@@ -447,6 +464,85 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HistoryBar */
+        HistoryBar: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Open */
+            open: string;
+            /** High */
+            high: string;
+            /** Low */
+            low: string;
+            /** Close */
+            close: string;
+            /** Volume */
+            volume: string;
+        };
+        /** HistoryResponse */
+        HistoryResponse: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "CN" | "HK" | "US";
+            /**
+             * Currency
+             * @enum {string}
+             */
+            currency: "CNY" | "HKD" | "USD";
+            /**
+             * Source
+             * @default tencent_history_public
+             * @constant
+             */
+            source: "tencent_history_public";
+            /**
+             * Adjustment
+             * @enum {string}
+             */
+            adjustment: "raw" | "qfq" | "hfq";
+            /**
+             * Period
+             * @default day
+             * @constant
+             */
+            period: "day";
+            /** Bars */
+            bars: components["schemas"]["HistoryBar"][];
+            /** Requested Limit */
+            requested_limit: number;
+            /** Actual Count */
+            actual_count: number;
+            /** Latest Date */
+            latest_date: string | null;
+            /** Earliest Date */
+            earliest_date: string | null;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /** Data As Of */
+            data_as_of: string | null;
+            /**
+             * Observation Only
+             * @default true
+             * @constant
+             */
+            observation_only: true;
+            /** Warnings */
+            warnings: string[];
+            /** History Complete */
+            history_complete: boolean;
+            /** Coverage Reason */
+            coverage_reason: string;
         };
         /** ItemCreate */
         ItemCreate: {
@@ -2186,6 +2282,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    history_api_v1_market_history_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                limit?: number;
+                adjustment?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -1,4 +1,7 @@
 import type { components } from '../../../generated/api-schema'
+export type HistoryResponse = components['schemas']['HistoryResponse']
+export type HistoryBar = components['schemas']['HistoryBar']
+export type HistoryAdjustment = HistoryResponse['adjustment']
 export type QuoteDTO = components['schemas']['QuoteDTO']
 export type Market = QuoteDTO['market']
 export type MarketCalendarStatus = components['schemas']['MarketCalendarStatus']

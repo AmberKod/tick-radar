@@ -9,6 +9,8 @@ export interface WorkspaceModule {
 export const workspaceModules: WorkspaceModule[] = [
   { key: 'market_data', path: '/market', label: '行情看板', english: 'Market', icon: ChartNoAxesCombined, enabled: true,
     description: '查询沪深京、港股和美股公共报价，查看自选行情。', scope: ['公共报价查询', '自选行情看板', '证券登记'] },
+  { key: 'market_history', path: '/market/history', label: '历史K线', english: 'History', icon: ChartNoAxesCombined, enabled: true,
+    description: '查询公共历史日线与原始成交量。', scope: ['历史日线', '复权选择', '原始成交量'] },
   { key: 'overview', path: '/system', label: '系统概览', english: 'Overview', icon: LayoutDashboard, enabled: true,
     description: '基础服务状态与模块接入进度', scope: [] },
   { key: 'securities', path: '/securities', label: '证券主数据', english: 'Securities', icon: ScanSearch, enabled: true,

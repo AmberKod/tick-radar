@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { flushPromises, mount } from '@vue/test-utils'
+import { config, flushPromises, mount } from '@vue/test-utils'
+config.global.stubs.RouterLink = { name: 'RouterLink', props: ['to'], template: '<a><slot /></a>' }
 import { nextTick } from 'vue'
 import MarketDashboard from '../src/modules/market/views/MarketDashboard.vue'
 import { useAuthStore } from '../src/modules/auth'
@@ -26,6 +27,13 @@ vi.mock('naive-ui', () => ({
 function dashboard() { return mount(MarketDashboard, { global: { stubs: { CalendarStatusPanel: true } } }) }
 beforeEach(() => { setActivePinia(createPinia()); vi.resetAllMocks(); vi.mocked(api.getGroups).mockResolvedValue({ groups: [group] }); vi.mocked(api.getItems).mockResolvedValue({ items: [] }) })
 describe('行情观察', () => {
+  it('公共报价表提供只含证券代码的历史K线入口，休市报价也可跳转', () => {
+    const wrapper = mount(QuoteTable, { props: { quotes: [{ ...quote, market_state: 'CLOSED' }] } })
+    const link = wrapper.findComponent({ name: 'RouterLink' })
+    expect(wrapper.text()).toContain('历史K线')
+    expect(link.props('to')).toEqual({ path: '/market/history', query: { symbol: 'US:AAPL' } })
+    wrapper.unmount()
+  })
   it('旧分组迟到成员和流事件均不能覆盖新分组', async () => {
     const store = useMarketStore()
     const item = (symbol: string) => ({ security: { symbol } }) as Awaited<ReturnType<typeof api.getItems>>['items'][number]
