@@ -3,11 +3,13 @@ from typing import Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from cross_market.modules.alerts.interfaces.router import router as alerts_router
 from cross_market.modules.indicators.interfaces.profiles import router as profiles_router
 from cross_market.modules.indicators.interfaces.router import router as indicators_router
 from cross_market.modules.market_calendar.interfaces.router import router as calendar_router
 from cross_market.modules.market_data.interfaces.events import router as market_events_router
 from cross_market.modules.market_data.interfaces.router import router as market_router
+from cross_market.modules.notifications.interfaces.router import router as notifications_router
 from cross_market.modules.portfolio.interfaces.router import router as portfolio_router
 from cross_market.modules.portfolio.interfaces.valuation import router as valuation_router
 from cross_market.modules.securities.interfaces.router import router as securities_router
@@ -39,3 +41,5 @@ def register_modules(app):
     app.include_router(profiles_router)
     app.include_router(portfolio_router)
     app.include_router(valuation_router)
+    app.include_router(alerts_router)
+    app.include_router(notifications_router)

@@ -3,7 +3,9 @@ import asyncio
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from cross_market.modules.alerts.infrastructure import models as alert_models  # noqa: F401
 from cross_market.modules.indicators.infrastructure.models import IndicatorProfile  # noqa: F401
+from cross_market.modules.notifications.infrastructure import models as notification_models  # noqa: F401
 from cross_market.modules.portfolio.infrastructure import models as portfolio_models  # noqa: F401
 from cross_market.modules.securities.infrastructure.models import Security  # noqa: F401
 from cross_market.modules.system.infrastructure.models import SystemSetting  # noqa: F401

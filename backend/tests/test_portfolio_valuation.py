@@ -145,6 +145,9 @@ async def test_worker_prioritizes_holdings_and_deduplicates(
     monkeypatch.setattr(
         "cross_market.modules.watchlist.application.service.list_quote_targets", watchlist_targets,
     )
+    alerts = ModuleType("cross_market.modules.alerts.application.service")
+    alerts.list_quote_targets = AsyncMock(return_value=[])
+    monkeypatch.setitem(sys.modules, alerts.__name__, alerts)
     session = object()
     assert await list_collection_targets(session, limit=3) == expected
     portfolio.list_quote_targets.assert_awaited_once_with(session, limit=3)

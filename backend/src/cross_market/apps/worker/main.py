@@ -14,8 +14,11 @@ from cross_market.shared.config import Settings
 from cross_market.shared.database import create_engine
 from cross_market.shared.logging import configure_logging
 
+_alert_collection_offset = 0
+
 
 async def list_collection_targets(session, limit=50) -> list[str]:
+    from cross_market.modules.alerts.application.service import list_quote_targets as alert_targets
     from cross_market.modules.portfolio.application.summary import (
         list_quote_targets as portfolio_targets,
     )
@@ -27,7 +30,22 @@ async def list_collection_targets(session, limit=50) -> list[str]:
         raise ValueError("报价目标数量必须在1至50之间")
     holdings = await portfolio_targets(session, limit=limit)
     watchlist = await watchlist_targets(session, limit=limit)
-    return list(dict.fromkeys([*holdings, *watchlist]))[:limit]
+    alerts = list(dict.fromkeys(await alert_targets(session, limit=200)))
+    primary = list(dict.fromkeys([*holdings, *watchlist]))
+    combined = list(dict.fromkeys([*primary, *alerts]))
+    if len(combined) <= limit:
+        return combined
+    # 按最终保留的主目标计算候选，持仓尾部的规则也参与轮转。
+    global _alert_collection_offset
+    slots = min(10, limit, len(alerts))
+    retained = primary[:limit - slots]
+    candidates = [symbol for symbol in alerts if symbol not in retained]
+    if not candidates:
+        return primary[:limit]
+    start = _alert_collection_offset % len(candidates)
+    rotated = candidates[start:] + candidates[:start]
+    _alert_collection_offset = (start + slots) % len(candidates)
+    return list(dict.fromkeys([*retained, *rotated[:slots], *primary]))[:limit]
 
 
 async def run() -> int:
@@ -51,21 +69,21 @@ async def run() -> int:
     try:
         calendar = CalendarService(settings.calendar_closed_dates)
         await calendar.warmup()
-        if settings.market_observation_enabled:
-            from cross_market.modules.market_data.application.service import QuoteService
+        from cross_market.modules.market_data.application.service import QuoteService
 
-            engine = create_engine(settings)
-            resources.push_async_callback(engine.dispose)
-            client = await resources.enter_async_context(
-                httpx.AsyncClient(timeout=5, follow_redirects=False, trust_env=False)
-            )
-            runtime.tasks = registered_tasks(
-                session_factory=async_sessionmaker(engine, expire_on_commit=False),
-                list_targets=list_collection_targets,
-                quote_service=QuoteService(
-                    client=client, redis=redis, settings=settings, calendar=calendar
-                ),
-            )
+        engine = create_engine(settings)
+        resources.push_async_callback(engine.dispose)
+        client = await resources.enter_async_context(
+            httpx.AsyncClient(timeout=5, follow_redirects=False, trust_env=False)
+        )
+        runtime.tasks = registered_tasks(
+            session_factory=async_sessionmaker(engine, expire_on_commit=False),
+            list_targets=list_collection_targets,
+            quote_service=QuoteService(
+                client=client, redis=redis, settings=settings, calendar=calendar
+            ),
+            settings=settings,
+        )
         # signal.signal 同时兼容 Windows 和 Unix 主线程入口。
         for sig in (signal.SIGINT, signal.SIGTERM):
             previous[sig] = signal.signal(sig, stop)

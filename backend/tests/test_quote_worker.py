@@ -262,7 +262,10 @@ async def test_redis_failure_cancels_callbacks():
 
 
 @pytest.mark.parametrize("failure", [False, True])
-async def test_main_closes_all_resources_without_real_database(monkeypatch, failure):
+@pytest.mark.parametrize("market_enabled", [False, True])
+async def test_main_closes_all_resources_without_real_database(
+    monkeypatch, failure, market_enabled
+):
     from cross_market.apps.worker import main
 
     redis = SimpleNamespace(aclose=AsyncMock())
@@ -276,7 +279,9 @@ async def test_main_closes_all_resources_without_real_database(monkeypatch, fail
         finally:
             await client.aclose()
 
-    monkeypatch.setattr(main, "Settings", settings)
+    monkeypatch.setattr(
+        main, "Settings", lambda: settings(market_observation_enabled=market_enabled)
+    )
     monkeypatch.setattr(main.Redis, "from_url", lambda *a, **k: redis)
     monkeypatch.setattr(main, "create_engine", lambda *a: engine)
     monkeypatch.setattr(main, "async_sessionmaker", lambda *a, **k: session_factory)
@@ -284,7 +289,7 @@ async def test_main_closes_all_resources_without_real_database(monkeypatch, fail
     monkeypatch.setattr(main.signal, "signal", lambda *a: None)
 
     async def run(runtime):
-        assert len(runtime.tasks) == 1
+        assert len(runtime.tasks) == (3 if market_enabled else 1)
         if failure:
             raise RuntimeError("password=secret-value")
         return 0
@@ -296,7 +301,7 @@ async def test_main_closes_all_resources_without_real_database(monkeypatch, fail
     redis.aclose.assert_awaited_once()
 
 
-def test_registry_defaults_empty_and_registers_one_callback():
+def test_registry_defaults_empty_and_registers_three_callbacks():
     assert registered_tasks() == ()
     assert (
         len(
@@ -304,5 +309,5 @@ def test_registry_defaults_empty_and_registers_one_callback():
                 session_factory=session_factory, list_targets=AsyncMock(), quote_service=object()
             )
         )
-        == 1
+        == 3
     )

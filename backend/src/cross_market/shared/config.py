@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     probe_timeout_seconds: float = Field(default=1, gt=0)
     cors_origins: list[str] = ["http://127.0.0.1:15173"]
     market_observation_enabled: bool = True
+    alert_observation_enabled: bool = True
+    alert_scan_interval_seconds: int = Field(default=5, ge=1, le=60)
+    notification_dispatch_interval_seconds: int = Field(default=2, ge=1, le=60)
     quote_refresh_interval_seconds: int = Field(default=30, ge=10, le=300)
     quote_max_symbols: int = Field(default=50, ge=1, le=50)
     # 按交易所本地日期配置临时全日闭市；不用于单证券停牌。
