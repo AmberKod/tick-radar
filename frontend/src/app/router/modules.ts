@@ -17,7 +17,7 @@ export const workspaceModules: WorkspaceModule[] = [
     description: '手工维护证券身份与基础资料。', scope: ['证券查询', '手工录入', '资料维护'] },
   { key: 'watchlist', path: '/watchlist', label: '自选股', english: 'Watchlist', icon: Star, enabled: true,
     description: '集中管理关注的证券，持续追踪市场变化。', scope: ['自选分组', '关注证券管理', '关联行情展示'] },
-  { key: 'portfolio', path: '/portfolio', label: '资产组合', english: 'Portfolio', icon: BriefcaseBusiness, enabled: false,
+  { key: 'portfolio', path: '/portfolio', label: '资产组合', english: 'Portfolio', icon: BriefcaseBusiness, enabled: true,
     description: '建立组合视图，了解资产配置与表现。', scope: ['组合管理', '持仓记录', '组合表现'] },
   { key: 'indicators', path: '/indicators', label: '指标中心', english: 'Indicators', icon: Activity, enabled: false,
     description: '以统一的指标计算能力支持观察与分析。', scope: ['指标定义', '计算任务', '指标结果'] },
