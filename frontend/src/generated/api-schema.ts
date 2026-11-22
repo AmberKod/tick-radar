@@ -350,10 +350,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/market-calendar/statuses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statuses */
+        get: operations["statuses_api_v1_market_calendar_statuses_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * CalendarBasis
+         * @enum {string}
+         */
+        CalendarBasis: "EXCHANGE_CALENDARS_REGULAR" | "CN_2026_REVIEWED_SHARED" | "MANUAL_CLOSED" | "UNAVAILABLE";
+        /**
+         * CalendarState
+         * @enum {string}
+         */
+        CalendarState: "REGULAR_SESSION" | "LUNCH_BREAK" | "OUTSIDE_REGULAR_SESSION" | "CLOSED" | "UNKNOWN";
         /** ComponentStatus */
         ComponentStatus: {
             /**
@@ -384,6 +411,11 @@ export interface components {
                 [key: string]: unknown;
             } | unknown[] | null;
         };
+        /**
+         * Exchange
+         * @enum {string}
+         */
+        Exchange: "SSE" | "SZSE" | "BSE" | "HKEX" | "NYSE" | "NASDAQ" | "AMEX";
         /** GroupDTO */
         GroupDTO: {
             /**
@@ -503,6 +535,85 @@ export interface components {
              */
             checked_at: string;
         };
+        /**
+         * Market
+         * @enum {string}
+         */
+        Market: "CN" | "HK" | "US";
+        /** MarketCalendarStatus */
+        MarketCalendarStatus: {
+            exchange: components["schemas"]["Exchange"];
+            market: components["schemas"]["Market"];
+            state: components["schemas"]["CalendarState"];
+            /** Timezone */
+            timezone: string;
+            /**
+             * Local Time
+             * Format: date-time
+             */
+            local_time: string;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /**
+             * Session Date
+             * Format: date
+             */
+            session_date: string;
+            /** Is Trading Day */
+            is_trading_day?: boolean | null;
+            /** Is Early Close */
+            is_early_close?: boolean | null;
+            /** Session Open */
+            session_open?: string | null;
+            /** Break Start */
+            break_start?: string | null;
+            /** Break End */
+            break_end?: string | null;
+            /** Session Close */
+            session_close?: string | null;
+            /** Next Open */
+            next_open?: string | null;
+            /** Next Close */
+            next_close?: string | null;
+            /** Calendar Name */
+            calendar_name: string;
+            /** Calendar Version */
+            calendar_version: string;
+            /**
+             * Coverage Start
+             * Format: date
+             */
+            coverage_start: string;
+            /**
+             * Coverage End
+             * Format: date
+             */
+            coverage_end: string;
+            basis: components["schemas"]["CalendarBasis"];
+            /** Reason */
+            reason: string;
+            /** Warnings */
+            warnings?: string[];
+            /**
+             * Scope
+             * @default REGULAR_EQUITIES_ONLY
+             * @constant
+             */
+            scope: "REGULAR_EQUITIES_ONLY";
+        };
+        /** MarketCalendarStatusesResponse */
+        MarketCalendarStatusesResponse: {
+            /** Statuses */
+            statuses: components["schemas"]["MarketCalendarStatus"][];
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+        };
         /** ModuleInfo */
         ModuleInfo: {
             /** Name */
@@ -594,6 +705,22 @@ export interface components {
              * @enum {string}
              */
             market_status: "MARKET_CLOSED" | "UNKNOWN";
+            /**
+             * Market State
+             * @default UNKNOWN
+             * @enum {string}
+             */
+            market_state: "REGULAR_SESSION" | "LUNCH_BREAK" | "OUTSIDE_REGULAR_SESSION" | "CLOSED" | "UNKNOWN";
+            /**
+             * Market State Reason
+             * @default 交易日历尚未接入
+             */
+            market_state_reason: string;
+            /**
+             * Market State Basis
+             * @default UNAVAILABLE
+             */
+            market_state_basis: string;
             /**
              * Delay Status
              * @default UNKNOWN
@@ -2230,6 +2357,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    statuses_api_v1_market_calendar_statuses_get: {
+        parameters: {
+            query?: {
+                exchange?: components["schemas"]["Exchange"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketCalendarStatusesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

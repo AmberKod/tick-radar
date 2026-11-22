@@ -1,5 +1,6 @@
 import { apiGet, apiPost, type RequestOptions } from '../../../shared/api/client'
-import type { Group, Item, QuoteDTO, QuoteList, SecurityFromQuote, SecurityFromQuoteInput } from '../types'
+import type { Group, Item, MarketCalendarStatuses, QuoteDTO, QuoteList, SecurityFromQuote, SecurityFromQuoteInput } from '../types'
+export const getCalendarStatuses = (options?: RequestOptions) => apiGet<MarketCalendarStatuses>('/market-calendar/statuses', options)
 export const getQuote = (symbol: string, options?: RequestOptions) => apiGet<QuoteDTO>(`/market/quote?${new URLSearchParams({ symbol })}`, options)
 export const getQuotes = (symbols: string[], options?: RequestOptions) => apiGet<QuoteList>(`/market/quotes?${new URLSearchParams({ symbols: symbols.join(',') })}`, options)
 export const refreshQuotes = (symbols: string[]) => apiPost<QuoteList>('/market/refresh', { symbols })

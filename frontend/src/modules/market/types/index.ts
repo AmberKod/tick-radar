@@ -1,6 +1,12 @@
 import type { components } from '../../../generated/api-schema'
 export type QuoteDTO = components['schemas']['QuoteDTO']
 export type Market = QuoteDTO['market']
+export type MarketCalendarStatus = components['schemas']['MarketCalendarStatus']
+export type MarketState = NonNullable<QuoteDTO['market_state']>
+export type MarketCalendarStatuses = { statuses: MarketCalendarStatus[]; checked_at: string }
+export const marketStateLabels: Record<MarketState, string> = {
+  REGULAR_SESSION: '常规交易', LUNCH_BREAK: '午间休市', OUTSIDE_REGULAR_SESSION: '常规时段外', CLOSED: '休市', UNKNOWN: '日历未知',
+}
 export type Currency = QuoteDTO['currency']
 export type QuoteList = components['schemas']['QuotesResponse']
 export type SecurityFromQuoteInput = components['schemas']['SecurityFromQuote']

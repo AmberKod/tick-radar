@@ -20,7 +20,26 @@
 .market-table td:nth-child(5) { min-width: 150px; max-width: 230px; }
 .market-table td:nth-last-child(-n+2) { min-width: 190px; font-size: 11px; color: #728198; }
 .watchlist-manage-heading { margin-top: 28px; margin-bottom: 18px; }
+.calendar-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.calendar-heading h2 { margin-bottom: 0; }
+.calendar-heading > span, .calendar-scope { font-size: 11px; }
+.calendar-scope { color: #728198; line-height: 1.7; margin: 12px 0 16px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.calendar-card { padding: 15px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; min-width: 0; }
+.calendar-card-heading { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.calendar-card-heading strong { color: #263851; font-size: 13px; }
+.calendar-card-heading small, .calendar-market { font-size: 10px; color: #728198; }
+.calendar-state { margin: 13px 0 10px; font-size: 17px; font-weight: 650; color: #52647a; }
+.calendar-card[data-state="REGULAR_SESSION"] .calendar-state { color: #16804a; }
+.calendar-card[data-state="UNKNOWN"] .calendar-state { color: #946413; }
+.calendar-early { margin-left: 8px; font-size: 10px; font-weight: 400; color: #946413; }
+.calendar-next { font-size: 11px; line-height: 1.8; color: #52647a; margin: 0; }
+.calendar-details { margin-top: 12px; font-size: 11px; color: #728198; overflow-wrap: anywhere; }
+.calendar-details summary { cursor: pointer; }
+.calendar-details p { margin: 8px 0 0; line-height: 1.6; }
+.calendar-error { color: #b4233c; font-size: 12px; margin-bottom: 14px; }
 @media (max-width: 640px) {
+  .calendar-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   .market-board-heading { flex-direction: column; gap: 5px; margin-bottom: 15px; }
   .market-group-select { width: 100%; }
   .quote-summary { align-items: flex-start; gap: 12px; }

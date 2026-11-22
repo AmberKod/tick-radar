@@ -14,7 +14,7 @@ import type { QuoteDTO } from '../src/modules/market/types'
 import { streamQuotes } from '../src/modules/market/api/stream'
 vi.mock('../src/modules/market/api/stream', () => ({ streamQuotes: vi.fn() }))
 vi.mock('../src/modules/market/api', () => ({ getQuote: vi.fn(), getQuotes: vi.fn(), refreshQuotes: vi.fn(), getGroups: vi.fn(), getItems: vi.fn(), createGroup: vi.fn(), createSecurityFromQuote: vi.fn(), addItem: vi.fn() }))
-const quote: QuoteDTO = { symbol: 'US:AAPL', name: null, market: 'US', currency: 'USD', currency_basis: 'MARKET_METADATA', timestamp_semantics: 'VENDOR_UPDATE_UNVERIFIED', timestamp_timezone_basis: 'UNVERIFIED', source: 'tencent_public', provider_symbol: 'usAAPL', price: null, prev_close: null, change: null, change_percent: null, market_timestamp: null, source_time_raw: null, received_at: null, cache_age_seconds: null, market_status: 'UNKNOWN', delay_status: 'UNKNOWN', quality_status: 'UNKNOWN', error: null, observation_only: true, warnings: [] }
+const quote: QuoteDTO = { symbol: 'US:AAPL', name: null, market: 'US', currency: 'USD', currency_basis: 'MARKET_METADATA', timestamp_semantics: 'VENDOR_UPDATE_UNVERIFIED', timestamp_timezone_basis: 'UNVERIFIED', source: 'tencent_public', provider_symbol: 'usAAPL', price: null, prev_close: null, change: null, change_percent: null, market_timestamp: null, source_time_raw: null, received_at: null, cache_age_seconds: null, market_status: 'UNKNOWN', market_state: 'UNKNOWN', market_state_reason: '日历未知', market_state_basis: 'UNAVAILABLE', delay_status: 'UNKNOWN', quality_status: 'UNKNOWN', error: null, observation_only: true, warnings: [] }
 const group = { id: 'g1', name: '自选', position: 0 }
 const usable = { ...quote, name: 'Apple', price: '100' }
 vi.mock('naive-ui', () => ({
@@ -23,7 +23,7 @@ vi.mock('naive-ui', () => ({
   NModal: { props: ['show'], template: '<div v-if="show"><slot /></div>' },
   NInput: { props: ['value'], emits: ['update:value'], template: '<input :value="value" @input="$emit(\'update:value\', $event.target.value)" />' }, NAlert: { template: '<div><slot /></div>' }, NTabs: { template: '<div><slot /></div>' }, NTab: { template: '<div><slot /></div>' },
 }))
-function dashboard() { return mount(MarketDashboard) }
+function dashboard() { return mount(MarketDashboard, { global: { stubs: { CalendarStatusPanel: true } } }) }
 beforeEach(() => { setActivePinia(createPinia()); vi.resetAllMocks(); vi.mocked(api.getGroups).mockResolvedValue({ groups: [group] }); vi.mocked(api.getItems).mockResolvedValue({ items: [] }) })
 describe('行情观察', () => {
   it('旧分组迟到成员和流事件均不能覆盖新分组', async () => {
@@ -174,6 +174,18 @@ describe('行情观察', () => {
     const store = useMarketStore(), first = store.lookup('US:AAPL')
     await store.lookup('US:MSFT'); finish({ ...quote, symbol: 'US:AAPL' }); await first
     expect(store.quote?.symbol).toBe('US:MSFT')
+  })
+  it.each([
+    ['REGULAR_SESSION', 'UNKNOWN', '常规交易', '时效未知'],
+    ['LUNCH_BREAK', 'UNKNOWN', '午间休市', '时效未知'],
+    ['UNKNOWN', 'MARKET_CLOSED', '日历未知', '休市报价'],
+  ] as const)('交易状态 %s 与质量 %s 分别可见且延迟未知不隐藏', (market_state, quality_status, stateLabel, qualityLabel) => {
+    const wrapper = mount(QuoteTable, { props: { quotes: [{ ...quote, market_state, quality_status, market_status: 'MARKET_CLOSED', market_state_reason: '日历判断原因', market_state_basis: 'UNAVAILABLE' }] } })
+    const cell = wrapper.findAll('tbody td')[4]!
+    expect(cell.text()).toContain(stateLabel); expect(cell.text()).toContain(qualityLabel)
+    expect(cell.text()).toContain('延迟状态未知')
+    expect(cell.text()).not.toContain('市场已收市')
+    expect(cell.find('[title]').attributes('title')).toContain('日历判断原因')
   })
   it('未知时效与休市状态明确呈现且未知数值留空', () => {
     const wrapper = mount(QuoteTable, { props: { quotes: [{ ...quote, quality_status: 'UNKNOWN' }, { ...quote, symbol: 'CN:600519', market: 'CN', currency: 'CNY', quality_status: 'MARKET_CLOSED', market_status: 'MARKET_CLOSED' }] } })
