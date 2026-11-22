@@ -33,6 +33,22 @@ beforeEach(() => {
 })
 afterEach(() => { vi.unstubAllGlobals() })
 describe('公共历史日线', () => {
+  it.each([
+    ['80692545.000', '8,069.25 万', '80,692,545'],
+    ['123456789.2500', '1.23 亿', '123,456,789.25'],
+    ['99999999.999', '1 亿', '99,999,999.999'],
+    ['0.000', '0', '0'],
+    ['9876.5000', '9,876.5', '9,876.5'],
+    ['9007199254740993.000', '90,071,992.55 亿', '9,007,199,254,740,993'],
+  ])('成交量%s以万亿简写，完整值可切换且源端不变', async (volume, compact, full) => {
+    const wrapper = mount(HistoryChart, { props: { bars: [{ ...bars[0]!, volume }] } })
+    expect(wrapper.find('.volume-readout').text()).toBe(`成交量 ${compact}`)
+    expect(wrapper.find('.volume-readout').attributes('title')).toContain(volume)
+    await wrapper.find('.volume-format').trigger('click')
+    expect(wrapper.find('.volume-readout').text()).toBe(`成交量 ${full}`)
+    expect(wrapper.props('bars')[0]!.volume).toBe(volume)
+    wrapper.unmount()
+  })
   it('路由代码自动请求默认参数，显示覆盖与精确读数，图表与观察器卸载清理', async () => {
     route.query = { symbol: 'US:AAPL', indicators: 'off' }
     const wrapper = mount(HistoryPage); await flushPromises()
@@ -42,7 +58,8 @@ describe('公共历史日线', () => {
     expect(wrapper.text()).toContain('供应商仅返回一根历史数据')
     expect(wrapper.text()).toContain('历史截至 2026-11-20')
     expect(wrapper.text()).toContain('100.00100')
-    expect(wrapper.text()).toContain('123456.0000')
+    expect(wrapper.text()).toContain('成交量 12.35 万')
+    expect(wrapper.find('.volume-readout').attributes('title')).toContain('123456.0000')
     chart.hover.mock.calls[0]![0]({ time: { year: 2026, month: 11, day: 20 } })
     await flushPromises()
     expect(wrapper.text()).toContain('101.01000')
