@@ -1,0 +1,31 @@
+/* 行情页面只负责展示真实接口数据，状态与时间保持并列可见。 */
+.market-page { gap: 24px; }
+.market-tabs { margin-bottom: 18px; }
+.market-actions { margin: 0; justify-content: flex-end; flex-wrap: wrap; }
+.sample-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; color: #8b96a8; font-size: 11px; margin-top: 12px; }
+.sample-actions .n-button { font-size: 12px; }
+.quote-result { margin-top: 25px; padding-top: 22px; border-top: 1px solid #e9eef5; }
+.quote-summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.quote-summary > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; }
+.quote-summary strong { font-size: 18px; color: #263851; }
+.quote-summary span { font-size: 14px; color: #7b879b; }
+.market-board-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.market-group-select { width: 230px; max-width: 100%; }
+.market-board-prompt { display: grid; justify-items: start; gap: 12px; }
+.market-board-prompt h2 { margin-bottom: 0; }
+.market-board-prompt p { font-size: 12px; color: #8793a6; line-height: 1.8; }
+.market-table { min-width: 980px; }
+.market-table .price-cell { font-size: 19px; font-weight: 650; color: #263851; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.market-table td:first-child { min-width: 150px; }
+.market-table td:nth-child(5) { min-width: 150px; max-width: 230px; }
+.market-table td:nth-last-child(-n+2) { min-width: 190px; font-size: 11px; color: #728198; }
+.watchlist-manage-heading { margin-top: 28px; margin-bottom: 18px; }
+@media (max-width: 640px) {
+  .market-board-heading { flex-direction: column; gap: 5px; margin-bottom: 15px; }
+  .market-group-select { width: 100%; }
+  .quote-summary { align-items: flex-start; gap: 12px; }
+  .quote-summary > div { gap: 5px; flex-direction: column; }
+  .quote-summary strong { font-size: 15px; }
+  .market-actions { justify-content: flex-start; }
+  .market-table .price-cell { font-size: 17px; }
+}

@@ -28,9 +28,9 @@ onUnmounted(() => system.cancel())
         </RouterLink>
       </nav>
       <div class="sidebar-bottom">
-        <div class="phase-label"><span class="status-dot blue"></span> 阶段 0 · 基础工程</div>
-        <p>先连接系统，再洞察市场。</p>
-        <div class="build-version">{{ system.status?.version || '版本待连接' }} <span>FOUNDATION</span></div>
+        <div class="phase-label"><span class="status-dot blue"></span> 市场观察</div>
+        <p>仅展示接口返回的公共报价。</p>
+        <div class="build-version">{{ system.status?.version || '版本待连接' }} <span>OBSERVATION</span></div>
       </div>
     </aside>
     <div class="main-shell">
@@ -43,7 +43,7 @@ onUnmounted(() => system.cancel())
         </div>
       </header>
       <main id="main-content" class="main-content"><TokenGate v-if="route.meta.private"><RouterView /></TokenGate><RouterView v-else /></main>
-      <footer class="workspace-footer"><span>TickRadar <span class="footer-divider">/</span> 市场观察工作台</span><span>基础能力接入中 <NIcon :component="ArrowUpRight" size="12" /></span></footer>
+      <footer class="workspace-footer"><span>TickRadar <span class="footer-divider">/</span> 市场观察工作台</span><span>报价时效未知 · 预警未启用 <NIcon :component="ArrowUpRight" size="12" /></span></footer>
     </div>
   </div>
 </template>

@@ -124,6 +124,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/securities/from-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** From Quote */
+        post: operations["from_quote_api_v1_securities_from_quote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/securities/{security_id}": {
         parameters: {
             query?: never;
@@ -265,6 +282,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/market/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quote */
+        get: operations["quote_api_v1_market_quote_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/market/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quotes */
+        get: operations["quotes_api_v1_market_quotes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/market/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Quotes */
+        post: operations["refresh_quotes_api_v1_market_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -325,6 +393,11 @@ export interface components {
         GroupsDTO: {
             /** Groups */
             groups: components["schemas"]["GroupDTO"][];
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
         };
         /** ItemCreate */
         ItemCreate: {
@@ -437,6 +510,123 @@ export interface components {
             /** Modules */
             modules: components["schemas"]["ModuleInfo"][];
         };
+        /** QuoteDTO */
+        QuoteDTO: {
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name?: string | null;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "CN" | "HK" | "US";
+            /**
+             * Currency
+             * @enum {string}
+             */
+            currency: "CNY" | "HKD" | "USD";
+            /**
+             * Currency Basis
+             * @default MARKET_METADATA
+             * @constant
+             */
+            currency_basis: "MARKET_METADATA";
+            /**
+             * Source
+             * @default tencent_public
+             * @constant
+             */
+            source: "tencent_public";
+            /** Provider Symbol */
+            provider_symbol: string;
+            /** Provider Exchange */
+            provider_exchange?: ("SSE" | "SZSE" | "BSE" | "HKEX" | "NASDAQ" | "NYSE" | "AMEX") | null;
+            /** Price */
+            price?: string | null;
+            /** Prev Close */
+            prev_close?: string | null;
+            /** Change */
+            change?: string | null;
+            /** Change Percent */
+            change_percent?: string | null;
+            /** Market Timestamp */
+            market_timestamp?: string | null;
+            /** Source Time Raw */
+            source_time_raw?: string | null;
+            /**
+             * Timestamp Semantics
+             * @default VENDOR_UPDATE_UNVERIFIED
+             * @constant
+             */
+            timestamp_semantics: "VENDOR_UPDATE_UNVERIFIED";
+            /**
+             * Timestamp Timezone Basis
+             * @default UNVERIFIED
+             */
+            timestamp_timezone_basis: string;
+            /** Received At */
+            received_at?: string | null;
+            /** Attempted At */
+            attempted_at?: string | null;
+            /** Cache Age Seconds */
+            cache_age_seconds?: number | null;
+            /**
+             * Market Status
+             * @default UNKNOWN
+             * @enum {string}
+             */
+            market_status: "MARKET_CLOSED" | "UNKNOWN";
+            /**
+             * Delay Status
+             * @default UNKNOWN
+             * @constant
+             */
+            delay_status: "UNKNOWN";
+            /**
+             * Quality Status
+             * @default UNAVAILABLE
+             * @enum {string}
+             */
+            quality_status: "UNKNOWN" | "MARKET_CLOSED" | "STALE" | "UNAVAILABLE" | "INVALID";
+            error?: components["schemas"]["QuoteError"] | null;
+            /**
+             * Observation Only
+             * @default true
+             * @constant
+             */
+            observation_only: true;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /** QuoteError */
+        QuoteError: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** QuotesResponse */
+        QuotesResponse: {
+            /** Quotes */
+            quotes: components["schemas"]["QuoteDTO"][];
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /**
+             * Observation Only
+             * @default true
+             * @constant
+             */
+            observation_only: true;
+        };
+        /** RefreshRequest */
+        RefreshRequest: {
+            /** Symbols */
+            symbols: string[];
+        };
         /** SecurityCreate */
         SecurityCreate: {
             /** Symbol */
@@ -489,9 +679,9 @@ export interface components {
             status: "ACTIVE" | "INACTIVE";
             /**
              * Source
-             * @constant
+             * @enum {string}
              */
-            source: "MANUAL";
+            source: "MANUAL" | "TENCENT_LOOKUP";
             /**
              * Created At
              * Format: date-time
@@ -502,6 +692,19 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** SecurityFromQuote */
+        SecurityFromQuote: {
+            /** Symbol */
+            symbol: string;
+            /** Exchange */
+            exchange?: ("SSE" | "SZSE" | "BSE" | "HKEX" | "NASDAQ" | "NYSE" | "AMEX") | null;
+            /**
+             * Security Type
+             * @default STOCK
+             * @enum {string}
+             */
+            security_type: "STOCK" | "ETF" | "ADR";
         };
         /** SecurityPage */
         SecurityPage: {
@@ -560,11 +763,30 @@ export interface components {
             /**
              * Status
              * @default disabled
-             * @constant
+             * @enum {string}
              */
-            status: "disabled";
+            status: "disabled" | "waiting" | "idle" | "success" | "partial" | "error" | "stale" | "unknown";
             /** Detail */
             detail: string;
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Checked At */
+            checked_at?: string | null;
+            /** Symbol Count */
+            symbol_count?: number | null;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -775,6 +997,75 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SecurityCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityDTO"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    from_quote_api_v1_securities_from_quote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecurityFromQuote"];
             };
         };
         responses: {
@@ -1719,6 +2010,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    quote_api_v1_market_quote_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                refresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quotes_api_v1_market_quotes_get: {
+        parameters: {
+            query: {
+                symbols: string;
+                refresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_quotes_api_v1_market_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

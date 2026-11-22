@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import { NAlert, NButton, NIcon, NSkeleton } from 'naive-ui'
 import { Server, Database, Layers, Cpu, ArrowUpRight, Check, CircleDashed, ChartNoAxesCombined, Bell, Info, PlugZap } from 'lucide-vue-next'
 import { useSystemStore } from '../stores/system'
@@ -19,6 +20,7 @@ const checkedAt = computed(() => {
   const date = new Date(system.status.checked_at)
   return Number.isNaN(date.getTime()) ? '检查时间不可用' : date.toLocaleString('zh-CN', { hour12: false })
 })
+const taskLabels: Record<string, string> = { disabled: '未启用', waiting: '等待首次运行', idle: '待机', success: '最近采集成功', partial: '部分失败', error: '采集失败', stale: '状态过期', unknown: '状态未知' }
 const overall = computed(() => {
   if (system.error) return '服务连接异常'
   if (!system.status) return '等待系统检查'
@@ -31,7 +33,7 @@ const overall = computed(() => {
     <section class="page-heading"><div><div class="eyebrow">SYSTEM OVERVIEW</div><h1>系统概览<span class="heading-tag">基础工程</span></h1><p>掌握服务健康状态，查看工作台能力接入进度。</p></div><span class="environment-tag"><span class="status-dot blue"></span> 本地工作空间</span></section>
     <section class="foundation-banner">
       <div class="banner-art" aria-hidden="true"><NIcon :component="PlugZap" size="30" /></div>
-      <div><div class="banner-title">基础已就位，洞察从真实数据开始。<span>PHASE 0</span></div><p>当前为基础工程阶段。行情采集、指标计算与预警任务尚未启用，不展示模拟报价或投资表现。</p></div>
+      <div><div class="banner-title">运行诊断<span>SYSTEM STATUS</span></div><p>{{ system.status?.market_data_enabled ? '观察报价已启用，自选由后台统一采集；开市时效未验收，价格预警继续关闭。' : '观察报价尚未启用，当前不执行行情采集或价格预警。' }}</p></div>
     </section>
     <NAlert v-if="system.error" type="error" title="无法获取系统状态" class="feedback-alert">
       {{ system.error.message }}<span v-if="system.error instanceof ApiError" class="request-id">请求 ID：{{ system.error.requestId }}</span>
@@ -58,9 +60,9 @@ const overall = computed(() => {
         </template>
       </section>
       <div class="right-column">
-        <section class="panel data-panel"><div class="panel-heading"><div><h2>行情数据</h2><p>数据连接与采集状态</p></div><span class="module-tag">未启用</span></div><div class="data-empty"><span class="empty-illustration"><NIcon :component="ChartNoAxesCombined" size="33" /></span><h3>尚未接入行情数据</h3><p>行情采集任务启用后，<br>这里将展示真实的数据接入状态。</p><NButton disabled>查看行情看板<template #icon><NIcon :component="ArrowUpRight" /></template></NButton></div><div class="panel-note"><NIcon :component="Info" size="14" /> 当前无行情采集任务运行</div></section>
+        <section class="panel data-panel"><div class="panel-heading"><div><h2>行情数据</h2><p>数据连接与采集状态</p></div><span class="module-tag">{{ system.status?.market_data_enabled ? '观察版' : '未启用' }}</span></div><div class="data-empty"><span class="empty-illustration"><NIcon :component="ChartNoAxesCombined" size="33" /></span><h3>{{ system.status?.market_data_enabled ? '真实观察报价已接入' : '尚未接入行情数据' }}</h3><p>{{ system.status?.market_data_enabled ? '价格来自实际供应商响应；源端时间、采集时间和失败状态分开展示。' : '行情采集任务启用后，这里将展示真实的数据接入状态。' }}</p><RouterLink v-if="system.status?.market_data_enabled" to="/market"><NButton>查看行情看板<template #icon><NIcon :component="ArrowUpRight" /></template></NButton></RouterLink><NButton v-else disabled>查看行情看板</NButton></div><div class="panel-note"><NIcon :component="Info" size="14" /> {{ system.status?.market_data_enabled ? '实时等级未知，自动风控未启用' : '当前无行情采集任务运行' }}</div></section>
         <section class="panel alert-panel"><span class="alert-icon"><NIcon :component="Bell" size="23" /></span><div><h3>预警尚未启用</h3><p>依赖行情与指标能力，当前不会触发或发送通知。</p><NButton text disabled>管理预警规则 <NIcon :component="ArrowUpRight" size="14" /></NButton></div></section>
-        <section v-if="system.status?.tasks.length" class="task-note"><span class="eyebrow">后台任务</span><div v-for="task in system.status.tasks" :key="task.name"><strong>{{ task.name }}</strong><span>未启用</span><p>{{ task.detail }}</p></div></section>
+        <section v-if="system.status?.tasks.length" class="task-note"><span class="eyebrow">后台任务</span><div v-for="task in system.status.tasks" :key="task.name"><strong>{{ task.name }}</strong><span>{{ taskLabels[task.status] || '状态未知' }}</span><p>{{ task.detail }}</p><p v-if="task.last_success_at">上次成功：{{ new Date(task.last_success_at).toLocaleString('zh-CN', { hour12: false }) }}</p></div></section>
       </div>
     </div>
   </div>

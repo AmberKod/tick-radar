@@ -7,10 +7,10 @@ export interface WorkspaceModule {
 }
 
 export const workspaceModules: WorkspaceModule[] = [
-  { key: 'overview', path: '/', label: '系统概览', english: 'Overview', icon: LayoutDashboard, enabled: true,
+  { key: 'market_data', path: '/market', label: '行情看板', english: 'Market', icon: ChartNoAxesCombined, enabled: true,
+    description: '查询沪深京、港股和美股公共报价，查看自选行情。', scope: ['公共报价查询', '自选行情看板', '证券登记'] },
+  { key: 'overview', path: '/system', label: '系统概览', english: 'Overview', icon: LayoutDashboard, enabled: true,
     description: '基础服务状态与模块接入进度', scope: [] },
-  { key: 'market_data', path: '/market', label: '行情看板', english: 'Market', icon: ChartNoAxesCombined, enabled: false,
-    description: '行情数据接入后，在这里查看市场动态与证券报价。', scope: ['证券基础信息', '行情数据与交易日历', '市场看板'] },
   { key: 'securities', path: '/securities', label: '证券主数据', english: 'Securities', icon: ScanSearch, enabled: true,
     description: '手工维护证券身份与基础资料。', scope: ['证券查询', '手工录入', '资料维护'] },
   { key: 'watchlist', path: '/watchlist', label: '自选股', english: 'Watchlist', icon: Star, enabled: true,

@@ -1,0 +1,66 @@
+import { ref, watch } from 'vue'
+import { defineStore } from 'pinia'
+import * as api from '../api'
+import type { Market, QuoteDTO } from '../types'
+import { errorMessage } from '../../../shared/api/client'
+export const useMarketStore = defineStore('market', () => {
+  const quote = ref<QuoteDTO | null>(null), quotes = ref<QuoteDTO[]>([]), checkedAt = ref('')
+  const groups = ref<Awaited<ReturnType<typeof api.getGroups>>['groups']>([]), groupId = ref('')
+  const loading = ref(false), error = ref(''), quoteError = ref(''), actionMessage = ref('')
+  let pollTimer: ReturnType<typeof setInterval> | undefined
+  let lookupController: AbortController | undefined, boardController: AbortController | undefined, groupsController: AbortController | undefined
+  let lookupRevision = 0, boardRevision = 0, sessionEpoch = 0
+  function clearPrivate() {
+    sessionEpoch++; boardRevision++; boardController?.abort(); groupsController?.abort()
+    if (pollTimer) clearInterval(pollTimer)
+    pollTimer = undefined; quotes.value = []; checkedAt.value = ''; groups.value = []; groupId.value = ''; quoteError.value = ''; actionMessage.value = ''
+  }
+  function clear() {
+    clearPrivate(); lookupRevision++; lookupController?.abort(); quote.value = null; loading.value = false; error.value = ''
+  }
+  watch(groupId, () => { boardRevision++; boardController?.abort(); quotes.value = []; checkedAt.value = ''; quoteError.value = '' }, { flush: 'sync' })
+  async function lookup(symbol: string) {
+    const version = ++lookupRevision, controller = new AbortController()
+    lookupController?.abort(); lookupController = controller
+    loading.value = true; error.value = ''; actionMessage.value = ''; quote.value = null
+    try { const result = await api.getQuote(symbol.trim().toUpperCase(), { signal: controller.signal }); if (version === lookupRevision) quote.value = result }
+    catch (cause) { if (version === lookupRevision && !controller.signal.aborted) { quote.value = null; error.value = errorMessage(cause) } }
+    finally { if (version === lookupRevision) loading.value = false }
+  }
+  async function loadGroups() {
+    const epoch = sessionEpoch, controller = new AbortController()
+    groupsController?.abort(); groupsController = controller
+    try {
+      const result = await api.getGroups({ signal: controller.signal })
+      if (epoch !== sessionEpoch || controller.signal.aborted) return
+      groups.value = result.groups.slice().sort((a, b) => a.position - b.position)
+      if (!groups.value.some(group => group.id === groupId.value)) groupId.value = groups.value[0]?.id || ''
+    } catch (cause) { if (epoch === sessionEpoch && !controller.signal.aborted) quoteError.value = errorMessage(cause) }
+  }
+  async function loadBoard() {
+    const selected = groupId.value, epoch = sessionEpoch, version = ++boardRevision, controller = new AbortController()
+    boardController?.abort(); boardController = controller
+    if (!selected) { quotes.value = []; checkedAt.value = ''; return }
+    const current = () => epoch === sessionEpoch && version === boardRevision && selected === groupId.value && !controller.signal.aborted
+    quoteError.value = ''
+    try {
+      const { items } = await api.getItems(selected, { signal: controller.signal })
+      if (!current()) return
+      const symbols = items.slice(0, 50).map(item => item.security.symbol)
+      if (!symbols.length) { quotes.value = []; checkedAt.value = ''; return }
+      const result = await api.getQuotes(symbols, { signal: controller.signal })
+      if (current()) { quotes.value = result.quotes; checkedAt.value = result.checked_at }
+    } catch (cause) { if (current()) quoteError.value = errorMessage(cause) }
+  }
+  async function refresh() {
+    if (!quotes.value.length) return
+    const epoch = sessionEpoch, selected = groupId.value
+    quoteError.value = ''
+    try { await api.refreshQuotes(quotes.value.map(item => item.symbol)); if (epoch === sessionEpoch && selected === groupId.value) await loadBoard() }
+    catch (cause) { if (epoch === sessionEpoch && selected === groupId.value) quoteError.value = errorMessage(cause) }
+  }
+  function visibleQuotes(market: Market | 'ALL') { return market === 'ALL' ? quotes.value : quotes.value.filter(item => item.market === market) }
+  function startPolling() { if (!pollTimer) pollTimer = setInterval(() => { if (groupId.value) void loadBoard() }, 10_000) }
+  window.addEventListener('auth:cleared', clearPrivate)
+  return { quote, quotes, checkedAt, groups, groupId, loading, error, quoteError, actionMessage, lookup, loadGroups, loadBoard, refresh, visibleQuotes, startPolling, clearPrivate, clear }
+})
