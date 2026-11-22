@@ -82,7 +82,7 @@ SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新
 
 ## 日线指标观察
 
-在“历史K线”页勾选“计算日线指标”，选择“短周期观察”或“标准参数”，也可调整各周期后点击查询。参数仅本次提交生效，不保存为数据库配置档案；输入非法值或MACD快线不小于慢线时不提交请求。
+打开“历史K线”并查询标的后，默认显示MA均线与MACD副图，图中可切换KDJ/ATR。“显示技术指标”开关立即重新查询，无需再点查询；展开“指标参数”可选择“短周期观察”或“标准参数”，也可调整周期后点击查询生效。参数不保存为数据库配置档案；输入非法值或MACD快线不小于慢线时不提交请求。只看纯K线可关闭开关，或通过`?symbol=US:AAPL&indicators=off`直接打开。
 
 - 短周期观察：MA10、MACD(6,13,5)、KDJ(13,5,5)、ATR14；标准参数：MA20、MACD(12,26,9)、KDJ(9,3,3)、ATR14。
 - MA叠加主图，可开关；MACD、KDJ、ATR在独立副图切换，成交量单独成区。悬停显示精确十进制字符串；未成熟值显示“预热不足”，图上不把空值当零。
@@ -159,7 +159,7 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新验证（2026-11-22）：含备份可选依赖时后端 397 项、前端 70 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
+最新验证（2026-11-22）：含备份可选依赖时后端 397 项、前端 71 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
 
 真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0003`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。Nginx 使用 Docker DNS 动态解析 API 容器地址，API 独立重建后代理恢复已实测。关闭浏览器后的 35 秒无行情 HTTP 请求窗口中，两个自选的采集时间继续推进，采集任务为 success；证据为 `artifacts/market-worker-validation.json`。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
 

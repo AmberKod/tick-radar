@@ -67,6 +67,7 @@ function fit() { chart?.timeScale().fitContent() }
 </script>
 <template>
   <div class="history-chart">
+    <p v-if="points" class="indicator-legend">主图：MA {{ parameters?.ma_period }} · 成交量 · 副图：{{ active.toUpperCase() }}</p>
     <div v-if="points" class="indicator-layers"><label><input v-model="showMa" type="checkbox" /> MA {{ parameters?.ma_period }}</label><div role="tablist" aria-label="日线指标图层"><button v-for="tab in (['macd', 'kdj', 'atr'] as const)" :key="tab" type="button" role="tab" :aria-selected="active === tab" @click="active = tab">{{ tab.toUpperCase() }}</button></div></div>
     <div v-if="selected" class="history-readout" aria-live="polite"><strong>{{ selected.date }}</strong><span>开 {{ selected.open }}</span><span>高 {{ selected.high }}</span><span>低 {{ selected.low }}</span><span>收 {{ selected.close }}</span><span>成交量 {{ selected.volume }}</span></div>
     <div v-if="selectedPoint" class="indicator-readout" aria-live="polite"><span v-if="showMa">MA {{ selectedPoint.ma ?? '预热不足' }}</span><span v-for="key in indicatorKeys" :key="key">{{ key.toUpperCase() }} {{ selectedPoint[key] ?? '预热不足' }}</span></div>
@@ -80,7 +81,8 @@ function fit() { chart?.timeScale().fitContent() }
 .history-readout, .indicator-readout, .indicator-layers, .chart-caption { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 8px 0; font-variant-numeric: tabular-nums; }
 .indicator-layers [role='tablist'] { display: flex; gap: 6px; }
 .chart-canvas { width: 100%; }
-.chart-caption, .chart-notice { font-size: 12px; color: #596579; }
+.chart-caption, .chart-notice, .indicator-legend { font-size: 12px; color: #596579; }
+.indicator-legend { margin: 14px 0 0; }
 .chart-notice { overflow-wrap: anywhere; }
 button { cursor: pointer; padding: 6px 10px; background: #f4f7fb; border: 1px solid #dce3eb; border-radius: 6px; color: #273449; }
 button[aria-selected='true'] { background: #dbeafe; border-color: #2563eb; }

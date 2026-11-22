@@ -36,6 +36,22 @@ async function enable() {
   return wrapper
 }
 describe('日线指标', () => {
+  it('打开K线默认计算并展示MA和MACD，关闭开关立即恢复纯历史', async () => {
+    route.query = { symbol: 'US:AAPL' }
+    const wrapper = mount(HistoryPage); await flushPromises()
+    expect((wrapper.find('.indicator-toggle input').element as HTMLInputElement).checked).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(fetch).mock.calls[0]![0]).toBe('/api/v1/indicators/daily')
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toBe('MACD')
+    expect(wrapper.text()).toContain('主图：MA 10')
+    expect(wrapper.find('.indicator-settings').attributes('open')).toBeUndefined()
+    vi.mocked(fetch).mockResolvedValueOnce(response(history))
+    await wrapper.find('.indicator-toggle input').setValue(false); await flushPromises()
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(fetch).mock.calls[1]![0]).toContain('/market/history?')
+    expect(wrapper.find('.indicator-layers').exists()).toBe(false)
+    wrapper.unmount()
+  })
   it('开启后一次POST含参数快照，展示服务端元数据；编辑参数不自动读取', async () => {
     const wrapper = await enable()
     await wrapper.find('form').trigger('submit'); await flushPromises()
@@ -70,7 +86,7 @@ describe('日线指标', () => {
     const signal = vi.mocked(fetch).mock.calls[0]![1]!.signal!
     vi.mocked(fetch).mockResolvedValueOnce(response(history))
     await wrapper.find('input[type="checkbox"]').setValue(false)
-    await wrapper.find('form').trigger('submit'); await flushPromises()
+    await flushPromises()
     expect(signal.aborted).toBe(true)
     expect(vi.mocked(fetch).mock.calls[1]![0]).toContain('/market/history?')
     finish(response(result())); await flushPromises()

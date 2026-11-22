@@ -9,7 +9,7 @@ import HistoryChart from '../components/HistoryChart.vue'
 const route = useRoute(), router = useRouter()
 const symbol = ref(''), limit = ref(120), adjustment = ref<HistoryAdjustment>('raw')
 const result = ref<HistoryResponse | null>(null), error = ref(''), loading = ref(false)
-const indicatorsEnabled = ref(false), indicators = ref<DailyIndicatorsResponse | null>(null)
+const indicatorsEnabled = ref(route.query.indicators !== 'off'), indicators = ref<DailyIndicatorsResponse | null>(null)
 const importantWarnings = computed(() => indicators.value?.warnings.filter(warning => /预热不足|未达到|缺失/.test(warning)) || [])
 const shortParameters: IndicatorParameters = { ma_period: 10, macd_fast: 6, macd_slow: 13, macd_signal: 5, kdj_lookback: 13, kdj_k: 5, kdj_d: 5, atr_period: 14 }
 const standardParameters: IndicatorParameters = { ma_period: 20, macd_fast: 12, macd_slow: 26, macd_signal: 9, kdj_lookback: 9, kdj_k: 3, kdj_d: 3, atr_period: 14 }
@@ -64,6 +64,7 @@ async function lookup(value = symbol.value) {
   if (route.query.symbol !== next) await router.push({ path: '/market/history', query: next ? { symbol: next } : {} })
   else await load(next)
 }
+watch(indicatorsEnabled, () => { if (symbol.value.trim()) void load(symbol.value) })
 watch(() => route.query.symbol, value => { void load(typeof value === 'string' ? value : '') }, { immediate: true })
 onBeforeUnmount(() => { ++revision; controller?.abort() })
 function time(value: string) {
@@ -81,8 +82,8 @@ function time(value: string) {
         <NSelect v-model:value="adjustment" :options="adjustments" aria-label="复权方式" />
         <NButton type="primary" attr-type="submit" :loading="loading" :disabled="!symbol.trim() || !!parameterError">查询历史日线</NButton>
       </form>
-      <label class="indicator-toggle"><input v-model="indicatorsEnabled" type="checkbox" /> 计算日线指标</label>
-      <details v-if="indicatorsEnabled" class="indicator-settings" open>
+      <label class="indicator-toggle"><input v-model="indicatorsEnabled" type="checkbox" /> 显示技术指标</label><span class="indicator-hint">默认显示 MA 与 MACD，图中可切换 KDJ / ATR；开关自动更新</span>
+      <details v-if="indicatorsEnabled" class="indicator-settings">
         <summary>指标参数（仅本次提交生效）</summary>
         <div class="sample-actions"><NButton @click="parameters = { ...shortParameters }">短周期观察</NButton><NButton @click="parameters = { ...standardParameters }">标准参数</NButton></div>
         <div class="parameter-grid"><label v-for="field in parameterFields" :key="field.key">{{ field.label }}<input v-model.number="parameters[field.key]" type="number" :min="field.min" :max="field.max" step="1" :aria-label="field.label" /></label></div>
@@ -117,6 +118,7 @@ function time(value: string) {
 <style scoped>
 .indicator-toggle { display: inline-flex; align-items: center; gap: 6px; margin: 16px 0; }
 .indicator-settings summary { cursor: pointer; }
+.indicator-hint { display: inline-block; margin-left: 12px; font-size: 12px; color: #596579; line-height: 1.8; }
 .parameter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin: 12px 0; }
 .parameter-grid label { display: grid; gap: 6px; }
 .parameter-grid input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }

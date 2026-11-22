@@ -7,7 +7,7 @@ import { setAccessToken } from '../src/shared/api/client'
 import type { HistoryResponse } from '../src/modules/market/types'
 const chart = vi.hoisted(() => ({ remove: vi.fn(), resize: vi.fn(), fitContent: vi.fn(), setData: vi.fn(), hover: vi.fn(), disconnect: vi.fn(), observe: vi.fn() }))
 const routing = vi.hoisted(() => ({ push: vi.fn() }))
-const route = reactive<{ query: { symbol?: string } }>({ query: {} })
+const route = reactive<{ query: { symbol?: string; indicators?: string } }>({ query: {} })
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => routing }))
 vi.mock('lightweight-charts', () => ({
   CandlestickSeries: 'candlestick', HistogramSeries: 'histogram', ColorType: { Solid: 'solid' },
@@ -26,15 +26,15 @@ function history(overrides: Partial<HistoryResponse> = {}): HistoryResponse {
 const response = (data: HistoryResponse) => new Response(JSON.stringify(data), { status: 200 })
 let resizeCallback: ResizeObserverCallback
 beforeEach(() => {
-  vi.clearAllMocks(); route.query = {}; setAccessToken('')
+  vi.clearAllMocks(); route.query = { indicators: 'off' }; setAccessToken('')
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(history())))
   vi.stubGlobal('ResizeObserver', class { constructor(callback: ResizeObserverCallback) { resizeCallback = callback } observe = chart.observe; disconnect = chart.disconnect })
-  routing.push.mockImplementation(async (value: { query: { symbol?: string } }) => { route.query = value.query })
+  routing.push.mockImplementation(async (value: { query: { symbol?: string; indicators?: string } }) => { route.query = value.query })
 })
 afterEach(() => { vi.unstubAllGlobals() })
 describe('公共历史日线', () => {
   it('路由代码自动请求默认参数，显示覆盖与精确读数，图表与观察器卸载清理', async () => {
-    route.query = { symbol: 'US:AAPL' }
+    route.query = { symbol: 'US:AAPL', indicators: 'off' }
     const wrapper = mount(HistoryPage); await flushPromises()
     expect(fetch).toHaveBeenCalledWith('/api/v1/market/history?symbol=US%3AAAPL&limit=120&adjustment=raw', expect.objectContaining({ method: 'GET' }))
     const init = vi.mocked(fetch).mock.calls[0]![1]!
@@ -67,7 +67,7 @@ describe('公共历史日线', () => {
   it('切换代码取消旧请求且迟到旧响应不能覆盖新图', async () => {
     let finish!: (value: Response) => void
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
-    route.query = { symbol: 'US:AAPL' }
+    route.query = { symbol: 'US:AAPL', indicators: 'off' }
     const wrapper = mount(HistoryPage); await flushPromises()
     const oldSignal = vi.mocked(fetch).mock.calls[0]![1]!.signal!
     route.query = { symbol: 'HK:00700' }; await flushPromises()
@@ -78,7 +78,7 @@ describe('公共历史日线', () => {
     wrapper.unmount()
   })
   it('新请求加载时清理旧图，明确显示复权错误且不降级', async () => {
-    route.query = { symbol: 'US:AAPL' }
+    route.query = { symbol: 'US:AAPL', indicators: 'off' }
     const wrapper = mount(HistoryPage); await flushPromises()
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ message: '供应商不支持美股后复权', code: 'ADJUSTMENT_UNSUPPORTED' }), { status: 422 }))
     await wrapper.findAll('select')[1]!.setValue('hfq')
@@ -91,7 +91,7 @@ describe('公共历史日线', () => {
   })
   it('空数据和无效数值不绘制图表，显示原因', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(response(history({ bars: [], actual_count: 0, latest_date: null, earliest_date: null })))
-    route.query = { symbol: 'US:AAPL' }
+    route.query = { symbol: 'US:AAPL', indicators: 'off' }
     const wrapper = mount(HistoryPage); await flushPromises()
     expect(wrapper.text()).toContain('暂无可用历史日线')
     expect(wrapper.findComponent(HistoryChart).exists()).toBe(false)
@@ -102,7 +102,7 @@ describe('公共历史日线', () => {
     wrapper.unmount()
   })
   it('请求切换到加载状态立即移除旧图，卸载取消正在读取的请求', async () => {
-    route.query = { symbol: 'US:AAPL' }
+    route.query = { symbol: 'US:AAPL', indicators: 'off' }
     const wrapper = mount(HistoryPage); await flushPromises()
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
     route.query = { symbol: 'CN:600519' }; await flushPromises()
