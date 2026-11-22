@@ -43,7 +43,7 @@ onUnmounted(() => system.cancel())
         </div>
       </header>
       <main id="main-content" class="main-content"><TokenGate v-if="route.meta.private"><RouterView /></TokenGate><RouterView v-else /></main>
-      <footer class="workspace-footer"><span>TickRadar <span class="footer-divider">/</span> 市场观察工作台</span><span>报价时效未知 · 预警未启用 <NIcon :component="ArrowUpRight" size="12" /></span></footer>
+      <footer class="workspace-footer"><span>TickRadar <span class="footer-divider">/</span> 市场观察工作台</span><span>报价时效未知 · 预警仅供观察 <NIcon :component="ArrowUpRight" size="12" /></span></footer>
     </div>
   </div>
 </template>

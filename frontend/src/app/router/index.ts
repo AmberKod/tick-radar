@@ -11,7 +11,8 @@ export const router = createRouter({
     { path: '/securities', component: () => import('../../modules/securities').then(module => module.SecuritiesPage), meta: { title: '证券主数据', private: true } },
     { path: '/watchlist', component: () => import('../../modules/watchlist').then(module => module.WatchlistPage), meta: { title: '自选股', private: true } },
     { path: '/portfolio', component: () => import('../../modules/portfolio').then(module => module.PortfolioPage), meta: { title: '资产组合', private: true } },
-    ...workspaceModules.filter(module => !['overview', 'market_data', 'market_history', 'securities', 'watchlist', 'portfolio'].includes(module.key)).map(module => ({
+    { path: '/alerts', component: () => import('../../modules/alerts').then(module => module.AlertsPage), meta: { title: '预警与通知', private: true } },
+    ...workspaceModules.filter(module => !['overview', 'market_data', 'market_history', 'securities', 'watchlist', 'portfolio', 'alerts'].includes(module.key)).map(module => ({
       path: module.path,
       component: () => import('../../shared/components/ModulePlaceholderPage.vue'),
       props: { module }, meta: { title: module.label },
