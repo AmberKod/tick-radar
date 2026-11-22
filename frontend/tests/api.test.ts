@@ -69,6 +69,28 @@ describe('统一 API 客户端', () => {
     await oldRequest
     expect(getAccessToken()).toBe('synthetic-new-token')
   })
+  it('相同Token重新登录后旧请求迟到401不注销新会话', async () => {
+    let finish!: (response: Response) => void
+    setAccessToken('synthetic-reused-token')
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(resolve => { finish = resolve })))
+    const pending = expect(apiGet('/test')).rejects.toMatchObject({ status: 401 })
+    setAccessToken(''); setAccessToken('synthetic-reused-token')
+    finish(new Response('{}', { status: 401 })); await pending
+    expect(getAccessToken()).toBe('synthetic-reused-token')
+  })
+  it('401响应体读取期间取消仍保留取消语义且不清除新会话', async () => {
+    let rejectBody!: (reason: unknown) => void
+    const serverResponse = new Response(null, { status: 401 })
+    vi.spyOn(serverResponse, 'json').mockImplementation(() => new Promise((_resolve, reject) => { rejectBody = reject }))
+    setAccessToken('synthetic-reused-token')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(serverResponse))
+    const controller = new AbortController()
+    const pending = expect(apiGet('/test', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    await vi.waitFor(() => expect(serverResponse.json).toHaveBeenCalledOnce())
+    controller.abort(); setAccessToken(''); setAccessToken('synthetic-reused-token')
+    rejectBody(new DOMException('Aborted', 'AbortError')); await pending
+    expect(getAccessToken()).toBe('synthetic-reused-token')
+  })
   it('401发出统一认证事件', async () => {
     const listener = vi.fn()
     window.addEventListener('api:unauthorized', listener)

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import HistoryPage from '../src/modules/market/views/HistoryPage.vue'
 import HistoryChart from '../src/modules/market/components/HistoryChart.vue'
 import { setAccessToken } from '../src/shared/api/client'
@@ -26,6 +27,7 @@ function history(overrides: Partial<HistoryResponse> = {}): HistoryResponse {
 const response = (data: HistoryResponse) => new Response(JSON.stringify(data), { status: 200 })
 let resizeCallback: ResizeObserverCallback
 beforeEach(() => {
+  setActivePinia(createPinia())
   vi.clearAllMocks(); route.query = { indicators: 'off' }; setAccessToken('')
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(history())))
   vi.stubGlobal('ResizeObserver', class { constructor(callback: ResizeObserverCallback) { resizeCallback = callback } observe = chart.observe; disconnect = chart.disconnect })

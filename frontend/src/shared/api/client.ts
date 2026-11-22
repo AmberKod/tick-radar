@@ -11,14 +11,22 @@ export class ApiError extends Error {
   }
 }
 export interface RequestOptions { signal?: AbortSignal; timeoutMs?: number }
-let accessToken = ''
+let accessToken = '', sessionGeneration = 0
 export const getAccessToken = () => accessToken
-export const setAccessToken = (token: string) => { accessToken = token }
+export const getSessionGeneration = () => sessionGeneration
+export const setAccessToken = (token: string) => { accessToken = token; sessionGeneration++ }
 export const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
-export async function responseError(response: Response, requestId: string, requestToken: string): Promise<ApiError> {
-  const body = await response.json().catch(() => ({})) as ApiErrorBody
+export async function responseError(response: Response, requestId: string, requestToken: string, requestGeneration: number, signal?: AbortSignal): Promise<ApiError> {
+  signal?.throwIfAborted()
+  const body = await response.json().catch(cause => {
+    signal?.throwIfAborted()
+    if (cause instanceof Error && cause.name === 'AbortError') throw cause
+    return {}
+  }) as ApiErrorBody
+  signal?.throwIfAborted()
   const id = response.headers.get('X-Request-ID') || body.trace_id || requestId
-  if (response.status === 401 && accessToken === requestToken) {
+  // Token值可重复使用，会话代数仍必须一致才允许旧请求注销当前会话。
+  if (response.status === 401 && sessionGeneration === requestGeneration && accessToken === requestToken) {
     setAccessToken('')
     window.dispatchEvent(new CustomEvent('api:unauthorized'))
   }
@@ -27,7 +35,7 @@ export async function responseError(response: Response, requestId: string, reque
 export async function apiRequest<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
   const controller = new AbortController()
   const requestId = crypto.randomUUID()
-  const requestToken = accessToken
+  const requestToken = accessToken, requestGeneration = sessionGeneration
   let timedOut = false
   const abort = () => controller.abort(options.signal?.reason)
   if (options.signal?.aborted) abort()
@@ -41,7 +49,7 @@ export async function apiRequest<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', p
       ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
     })
     if (!response.ok) {
-      throw await responseError(response, requestId, requestToken)
+      throw await responseError(response, requestId, requestToken, requestGeneration, controller.signal)
     }
     if (response.status === 204) return undefined as T
     return await response.json() as T

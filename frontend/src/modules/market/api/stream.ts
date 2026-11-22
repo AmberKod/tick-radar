@@ -1,5 +1,5 @@
 import type { components } from '../../../generated/api-schema'
-import { ApiError, baseUrl, getAccessToken, responseError } from '../../../shared/api/client'
+import { ApiError, baseUrl, getAccessToken, getSessionGeneration, responseError } from '../../../shared/api/client'
 
 export type QuoteStreamEvent = components['schemas']['QuoteStreamEvent']
 export type StreamState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error'
@@ -52,7 +52,7 @@ export async function streamQuotes(symbols: string[], options: {
   let attempt = 0
   while (!signal.aborted) {
     options.onState(attempt ? 'reconnecting' : 'connecting')
-    const controller = new AbortController(), requestId = crypto.randomUUID(), token = getAccessToken()
+    const controller = new AbortController(), requestId = crypto.randomUUID(), token = getAccessToken(), generation = getSessionGeneration()
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, timer: ReturnType<typeof setTimeout> | undefined
     let receivedSnapshot = false
     const abort = () => { controller.abort(); void reader?.cancel().catch(() => {}) }
@@ -65,7 +65,7 @@ export async function streamQuotes(symbols: string[], options: {
         signal: controller.signal,
         headers: { Authorization: `Bearer ${token}`, 'X-Request-ID': requestId, Accept: 'text/event-stream' },
       })
-      if (!response.ok) throw await responseError(response, requestId, token)
+      if (!response.ok) throw await responseError(response, requestId, token, generation, controller.signal)
       if (!response.headers.get('Content-Type')?.includes('text/event-stream') || !response.body) throw new Error('行情流响应格式无效')
       reader = response.body.getReader()
       const decoder = new TextDecoder()

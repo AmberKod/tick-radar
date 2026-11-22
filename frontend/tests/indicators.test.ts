@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import HistoryPage from '../src/modules/market/views/HistoryPage.vue'
 import HistoryChart from '../src/modules/market/components/HistoryChart.vue'
 import type { DailyIndicatorsResponse, HistoryResponse } from '../src/modules/market/types'
@@ -24,6 +25,7 @@ function result(): DailyIndicatorsResponse {
 }
 const response = (value: unknown) => new Response(JSON.stringify(value), { status: 200 })
 beforeEach(() => {
+  setActivePinia(createPinia())
   vi.clearAllMocks(); chart.series.length = 0; route.query = {}
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(result())))
   vi.stubGlobal('ResizeObserver', class { observe = vi.fn(); disconnect = vi.fn() })

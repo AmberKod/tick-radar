@@ -6,6 +6,8 @@ import { getHistory, getIndicators, getMinuteHistory, getMinuteIndicators } from
 import { ApiError } from '../../../shared/api/client'
 import type { DailyIndicatorsResponse, IndicatorParameters, HistoryAdjustment, HistoryResponse, MinuteHistoryResponse, MinuteIndicatorsResponse, HistoryBar, MinuteBar, IndicatorPoint, MinuteIndicatorPoint } from '../types'
 import HistoryChart from '../components/HistoryChart.vue'
+import IndicatorProfilePanel from '../../indicators/components/IndicatorProfilePanel.vue'
+import { useAuthStore } from '../../auth/stores/auth'
 const route = useRoute(), router = useRouter()
 const symbol = ref(''), limit = ref(120), adjustment = ref<HistoryAdjustment>('raw')
 const period = ref<'day' | 'm15'>(route.query.period === 'm15' ? 'm15' : 'day')
@@ -19,6 +21,12 @@ const importantWarnings = computed(() => indicators.value?.warnings.filter(warni
 const shortParameters: IndicatorParameters = { ma_period: 10, macd_fast: 6, macd_slow: 13, macd_signal: 5, kdj_lookback: 13, kdj_k: 5, kdj_d: 5, atr_period: 14 }
 const standardParameters: IndicatorParameters = { ma_period: 20, macd_fast: 12, macd_slow: 26, macd_signal: 9, kdj_lookback: 9, kdj_k: 3, kdj_d: 3, atr_period: 14 }
 const parameters = ref<IndicatorParameters>({ ...shortParameters })
+const auth = useAuthStore()
+const profileMarket = computed(() => {
+  const market = symbol.value.trim().toUpperCase().split(':')[0]
+  return market === 'CN' || market === 'HK' || market === 'US' ? market : null
+})
+watch(() => auth.epoch, () => { parameters.value = { ...shortParameters } }, { flush: 'sync' })
 const parameterFields: { key: keyof IndicatorParameters; label: string; min: number; max: number }[] = [
   { key: 'ma_period', label: 'MA 周期', min: 2, max: 120 },
   { key: 'macd_fast', label: 'MACD 快线', min: 2, max: 60 }, { key: 'macd_slow', label: 'MACD 慢线', min: 3, max: 120 }, { key: 'macd_signal', label: 'MACD 信号周期', min: 2, max: 60 },
@@ -102,9 +110,10 @@ function time(value: string) {
       </form>
       <label class="indicator-toggle"><input v-model="indicatorsEnabled" type="checkbox" /> 显示技术指标</label><span class="indicator-hint">默认显示 MA 与 MACD，图中可切换 KDJ / ATR；开关自动更新</span>
       <details v-if="indicatorsEnabled" class="indicator-settings">
-        <summary>指标参数（仅本次提交生效）</summary>
+        <summary>指标参数（编辑或载入后，点击查询应用）</summary>
         <div class="sample-actions"><NButton @click="parameters = { ...shortParameters }">短周期观察</NButton><NButton @click="parameters = { ...standardParameters }">标准参数</NButton></div>
         <div class="parameter-grid"><label v-for="field in parameterFields" :key="field.key">{{ field.label }}<input v-model.number="parameters[field.key]" type="number" :min="field.min" :max="field.max" step="1" :aria-label="field.label" /></label></div>
+        <IndicatorProfilePanel :parameters="parameters" :timeframe="period" :adjustment="period === 'm15' ? 'vendor_unverified' : adjustment" :market="profileMarket" @load="parameters = { ...$event }" />
       </details>
       <p v-if="parameterError" role="alert" class="parameter-error">{{ parameterError }}</p>
       <div class="sample-actions"><span>示例代码</span><NButton v-for="sample in ['CN:600519', 'CN:000001', 'HK:00700', 'US:AAPL']" :key="sample" text @click="lookup(sample)">{{ sample }}</NButton></div>

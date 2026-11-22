@@ -67,6 +67,16 @@ describe('行情 SSE', () => {
     expect(cancel).toHaveBeenCalled(); expect(onState).toHaveBeenLastCalledWith('reconnecting')
     controller.abort(); await pending
   })
+  it('同一Token重新登录后的迟到SSE401不注销新会话', async () => {
+    setAccessToken('reused')
+    let finish!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { finish = resolve })))
+    const pending = streamQuotes(['US:AAPL'], { signal: new AbortController().signal, onEvent: vi.fn(), onState: vi.fn(), onError: vi.fn() })
+    setAccessToken(''); setAccessToken('reused')
+    finish(new Response('{}', { status: 401 })); await pending
+    expect(getAccessToken()).toBe('reused')
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
   it('认证未配置停止重连', async () => {
     vi.useFakeTimers(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 'AUTH_NOT_CONFIGURED' }), { status: 503 })))
     await streamQuotes(['US:AAPL'], { signal: new AbortController().signal, onEvent: vi.fn(), onState: vi.fn(), onError: vi.fn() })

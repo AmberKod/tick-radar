@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import HistoryPage from '../src/modules/market/views/HistoryPage.vue'
 import HistoryChart from '../src/modules/market/components/HistoryChart.vue'
 import type { MinuteHistoryResponse, MinuteIndicatorsResponse } from '../src/modules/market/types'
@@ -26,7 +27,7 @@ function result(): MinuteIndicatorsResponse {
   return { history: history(), parameters: { ma_period: 10, macd_fast: 6, macd_slow: 13, macd_signal: 5, kdj_lookback: 13, kdj_k: 5, kdj_d: 5, atr_period: 14 }, algorithm_version: 'm15-v1', parameter_hash: 'minute-hash', source_bars: 20, warmup_bars: 18, warmup_requested: 100, visible_bars: 2, points: timestamps.map((timestamp, index) => ({ timestamp, ma: index ? '101.000' : null, dif: index ? '-0.1' : null, dea: index ? '0.2' : null, macd: index ? '-0.6' : null, k: index ? '51' : null, d: index ? '50' : null, j: index ? '53' : null, atr: index ? '3' : null })), as_of: timestamps[1]!, calculated_at: '2026-11-22T08:00:00Z', warnings: ['预热不足'], observation_only: true, formula_notes: ['同周期计算'] }
 }
 const response = (data: unknown) => new Response(JSON.stringify(data), { status: 200 })
-beforeEach(() => { vi.clearAllMocks(); chart.series.length = 0; route.query = { symbol: 'CN:600519', period: 'm15' }; vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(result()))); vi.stubGlobal('ResizeObserver', class { observe = vi.fn(); disconnect = vi.fn() }) })
+beforeEach(() => { setActivePinia(createPinia()); vi.clearAllMocks(); chart.series.length = 0; route.query = { symbol: 'CN:600519', period: 'm15' }; vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(result()))); vi.stubGlobal('ResizeObserver', class { observe = vi.fn(); disconnect = vi.fn() }) })
 afterEach(() => vi.unstubAllGlobals())
 describe('15分钟历史和指标', () => {
   it('默认一次POST，不发送日线复权，元数据和预热提示可见；关闭只GET一次', async () => {
