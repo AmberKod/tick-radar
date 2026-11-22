@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from cross_market.modules.market_data.interfaces.events import router as market_events_router
 from cross_market.modules.market_data.interfaces.router import router as market_router
 from cross_market.modules.securities.interfaces.router import router as securities_router
 from cross_market.modules.system.interfaces.router import router
@@ -27,3 +28,4 @@ def register_modules(app):
     app.include_router(securities_router)
     app.include_router(watchlist_router)
     app.include_router(market_router)
+    app.include_router(market_events_router)

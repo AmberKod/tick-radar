@@ -53,6 +53,17 @@ class QuotesResponse(BaseModel):
     observation_only: Literal[True] = True
 
 
+class QuoteStreamEvent(BaseModel):
+    id: str
+    event: Literal["snapshot", "quote.updated", "heartbeat", "error"]
+    schema_version: Literal[1] = 1
+    symbols: list[str]
+    quotes: list[QuoteDTO]
+    checked_at: datetime
+    observation_only: Literal[True] = True
+    error: QuoteError | None = None
+
+
 class RefreshRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     symbols: list[str] = Field(min_length=1, max_length=50)

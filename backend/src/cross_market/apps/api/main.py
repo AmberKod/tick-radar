@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from cross_market.apps.api.bootstrap import register_modules
 from cross_market.apps.api.middleware import register_middleware
 from cross_market.modules.market_data.application.service import QuoteService
+from cross_market.modules.market_data.application.stream import QuoteStreamService
+from cross_market.modules.market_data.infrastructure.events import RedisQuoteEvents
 from cross_market.modules.system.application.health import HealthService
 from cross_market.modules.system.infrastructure.probes import InfrastructureProbes
 from cross_market.shared.config import Settings
@@ -38,7 +40,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(6, connect=2)) as client:
                 app.state.quote_service = QuoteService(client, redis, settings)
-                yield
+                app.state.quote_stream = QuoteStreamService(
+                    app.state.quote_service, RedisQuoteEvents(redis)
+                )
+                try:
+                    yield
+                finally:
+                    await app.state.quote_stream.close()
         finally:
             try:
                 await redis.aclose()

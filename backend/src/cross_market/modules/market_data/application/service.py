@@ -61,6 +61,49 @@ class QuoteService:
             raise ValueError("缓存证券标识不匹配")
         return quote
 
+    @staticmethod
+    def present(quote: QuoteDTO, checked_at: datetime) -> QuoteDTO:
+        quote = quote.model_copy(deep=True)
+        quote.market_status = market_status(quote.market, checked_at)
+        if quote.received_at:
+            quote.cache_age_seconds = max(0, (checked_at - quote.received_at).total_seconds())
+            quote.quality_status = (
+                "STALE" if quote.error or quote.cache_age_seconds > 180 else quote.market_status
+            )
+        return quote
+
+    async def snapshot(self, symbols: list[str]) -> QuotesResponse:
+        """纯缓存快照：订阅、心跳与重连均不能触发供应商请求。"""
+        checked_at = datetime.now(UTC)
+        if not self.settings.market_observation_enabled:
+            return QuotesResponse(
+                checked_at=checked_at,
+                quotes=[
+                    self.empty(symbol, "OBSERVATION_DISABLED", "报价查询已关闭")
+                    for symbol in symbols
+                ],
+            )
+        async with asyncio.timeout(3):
+            payloads = await self.cache.read_many(symbols)
+        result = []
+        for symbol, payload in zip(symbols, payloads, strict=True):
+            try:
+                quote = QuoteDTO.model_validate_json(payload) if payload else None
+                if quote and quote.symbol != symbol:
+                    raise ValueError("缓存证券标识不匹配")
+            except ValueError:
+                quote = self.empty(symbol, "INVALID_CACHE_RECORD", "共享报价无效")
+                quote.quality_status = "INVALID"
+            if (
+                quote
+                and quote.received_at
+                and (checked_at - quote.received_at).total_seconds() > 3600
+            ):
+                quote = None
+            quote = quote or self.empty(symbol, "CACHE_PENDING", "等待后台采集报价")
+            result.append(self.present(quote, checked_at))
+        return QuotesResponse(quotes=result, checked_at=checked_at)
+
     def _due(self, quote: QuoteDTO | None, refresh: bool) -> bool:
         if quote is None:
             return True
@@ -209,13 +252,7 @@ class QuoteService:
             quote = quotes[symbol]
             if quote is None:
                 quote = self.empty(symbol, "REFRESH_THROTTLED", "刷新正在进行，请稍后重试")
-            quote = quote.model_copy(deep=True)
-            quote.market_status = market_status(quote.market, checked_at)
-            if quote.received_at:
-                quote.cache_age_seconds = max(0, (checked_at - quote.received_at).total_seconds())
-                quote.quality_status = (
-                    "STALE" if quote.error or quote.cache_age_seconds > 180 else quote.market_status
-                )
+            quote = self.present(quote, checked_at)
             if cache_failed:
                 quote.warnings.append("缓存不可用，本次查询使用进程内降级缓存")
             result.append(quote)

@@ -1,11 +1,13 @@
 from uuid import uuid4
 
 LEASE_SECONDS = 15
+QUOTE_CHANNEL = "market:quote.updated"
 
 PUBLISH = """
 if redis.call('get', KEYS[1]) ~= ARGV[1] then return 0 end
 if #KEYS == 3 and redis.call('get', KEYS[3]) ~= ARGV[4] then return 0 end
 redis.call('set', KEYS[2], ARGV[2], 'EX', ARGV[3])
+redis.call('publish', 'market:quote.updated', KEYS[2])
 return 1
 """
 
@@ -26,6 +28,9 @@ class RedisQuoteCache:
 
     async def read(self, symbol: str) -> str | None:
         return await self.redis.get(f"market:quote:{symbol}")
+
+    async def read_many(self, symbols: list[str]) -> list[str | None]:
+        return await self.redis.mget([f"market:quote:{symbol}" for symbol in symbols])
 
     async def write(
         self,

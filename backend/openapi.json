@@ -1730,6 +1730,97 @@
           }
         ]
       }
+    },
+    "/api/v1/events/stream": {
+      "get": {
+        "tags": [
+          "market-events"
+        ],
+        "summary": "Quote Stream",
+        "operationId": "quote_stream_api_v1_events_stream_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbols",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 2049,
+              "title": "Symbols"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE帧data遵循QuoteStreamEvent，每次连接先发送全量快照",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteStreamEvent"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "429": {
+            "description": "当前API进程已有8条推送连接"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2401,6 +2492,74 @@
           "message"
         ],
         "title": "QuoteError"
+      },
+      "QuoteStreamEvent": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "snapshot",
+              "quote.updated",
+              "heartbeat",
+              "error"
+            ],
+            "title": "Event"
+          },
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols"
+          },
+          "quotes": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteDTO"
+            },
+            "type": "array",
+            "title": "Quotes"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "observation_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Observation Only",
+            "default": true
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuoteError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event",
+          "symbols",
+          "quotes",
+          "checked_at"
+        ],
+        "title": "QuoteStreamEvent"
       },
       "QuotesResponse": {
         "properties": {
