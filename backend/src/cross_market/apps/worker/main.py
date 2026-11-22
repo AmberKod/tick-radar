@@ -15,6 +15,21 @@ from cross_market.shared.database import create_engine
 from cross_market.shared.logging import configure_logging
 
 
+async def list_collection_targets(session, limit=50) -> list[str]:
+    from cross_market.modules.portfolio.application.summary import (
+        list_quote_targets as portfolio_targets,
+    )
+    from cross_market.modules.watchlist.application.service import (
+        list_quote_targets as watchlist_targets,
+    )
+
+    if not 1 <= limit <= 50:
+        raise ValueError("报价目标数量必须在1至50之间")
+    holdings = await portfolio_targets(session, limit=limit)
+    watchlist = await watchlist_targets(session, limit=limit)
+    return list(dict.fromkeys([*holdings, *watchlist]))[:limit]
+
+
 async def run() -> int:
     settings = Settings()
     configure_logging(settings.log_level, service="worker")
@@ -38,7 +53,6 @@ async def run() -> int:
         await calendar.warmup()
         if settings.market_observation_enabled:
             from cross_market.modules.market_data.application.service import QuoteService
-            from cross_market.modules.watchlist.application.service import list_quote_targets
 
             engine = create_engine(settings)
             resources.push_async_callback(engine.dispose)
@@ -47,7 +61,7 @@ async def run() -> int:
             )
             runtime.tasks = registered_tasks(
                 session_factory=async_sessionmaker(engine, expire_on_commit=False),
-                list_targets=list_quote_targets,
+                list_targets=list_collection_targets,
                 quote_service=QuoteService(
                     client=client, redis=redis, settings=settings, calendar=calendar
                 ),

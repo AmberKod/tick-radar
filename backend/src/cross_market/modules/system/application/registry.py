@@ -19,13 +19,16 @@ MODULES = tuple(
             "2026常规时段、午休、提前收市及临时闭市覆盖",
         ),
         ("watchlist", "自选管理", "C", "foundation", "自选分组、证券关注及排序管理"),
-        ("portfolio", "资产持仓", "A", "planned", "持仓及交易事实管理尚未实施"),
+        (
+            "portfolio", "资产持仓", "A", "foundation",
+            "单币种账户、审计账本、冲正与移动平均成本核算",
+        ),
         (
             "indicators",
             "技术指标",
             "A",
             "foundation",
-            "日线MA/MACD/KDJ/ATR参数化观察计算；配置档案持久化与预警未启用",
+            "日线及沪深15分钟指标观察、版本化参数配置；预警未启用",
         ),
         ("alerts", "监控告警", "A", "planned", "告警规则及触发判断尚未实施"),
         ("notifications", "通知渠道", "C", "planned", "通知投递尚未实施"),

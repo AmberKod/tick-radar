@@ -26,7 +26,7 @@ def test_dependency_direction_and_no_api_scheduler():
 
 
 def test_business_router_and_cross_module_boundaries():
-    for module in ("watchlist", "securities", "indicators"):
+    for module in ("watchlist", "securities", "indicators", "portfolio"):
         module_root = ROOT / "modules" / module
         for path in module_root.rglob("*.py"):
             tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -73,7 +73,12 @@ def test_business_router_and_cross_module_boundaries():
 
 
 def test_indicator_domain_has_no_io_or_other_module_dependencies():
-    for path in (ROOT / "modules" / "indicators" / "domain").rglob("*.py"):
+    paths = [
+        path
+        for module in ("indicators", "portfolio")
+        for path in (ROOT / "modules" / module / "domain").rglob("*.py")
+    ]
+    for path in paths:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             names = []
@@ -83,6 +88,11 @@ def test_indicator_domain_has_no_io_or_other_module_dependencies():
                 names = [node.module]
             for name in names:
                 assert name.split(".")[0] not in {
-                    "fastapi", "sqlalchemy", "redis", "httpx", "pandas", "requests"
+                    "fastapi",
+                    "sqlalchemy",
+                    "redis",
+                    "httpx",
+                    "pandas",
+                    "requests",
                 }, (path, name)
                 assert not name.startswith("cross_market.modules."), (path, name)
