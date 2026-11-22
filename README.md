@@ -34,14 +34,16 @@ backend/.venv/Scripts/python.exe -m cross_market.apps.worker.main
 
 ## 容器运行
 
-先将 `.env.example` 复制为 `.env`，替换两个数据库示例密码，并设置自己的 `TR_API_TOKEN`。Token 仅注入后端，不能写入 `VITE_*` 配置。需要已启动的 Docker Linux 引擎。
+首次运行可使用下面的入口生成随机数据库密码和访问 Token；已有 `.env` 时会拒绝覆盖，凭据不输出。也可手工复制 `.env.example` 并替换示例值。Token 仅注入后端，不能写入 `VITE_*` 配置。需要已启动的 Docker Linux 引擎。
 
 ```bash
+# 仅首次生成；已有本地配置时跳过这一行。
+python scripts/init_local_env.py
 docker compose --env-file .env -f deploy/docker-compose.yml config --quiet
 docker compose --env-file .env -f deploy/docker-compose.yml up --build -d
 ```
 
-访问 `http://127.0.0.1:18080`。仅 Nginx 映射回环地址；API、MySQL、Redis 不映射宿主机端口。迁移成功后才启动 API 和 Worker。数据库使用持久卷；删除持久卷会丢失数据。
+访问 `http://127.0.0.1:18180`。仅 Nginx 映射回环地址；API、MySQL、Redis 不映射宿主机端口。迁移成功后才启动 API 和 Worker。数据库使用持久卷；删除持久卷会丢失数据。
 
 ## 迁移与接口契约
 
@@ -76,6 +78,10 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新第二批验证：后端 60 项、前端 24 项测试通过；20 项隔离 HTTP 检查以及浏览器 Token 登录、录入、添加自选、备注、退出清理通过。桌面双栏、520px 备注弹窗和 390px 布局已验证；此前截图缺业务样式的问题已补齐。Compose 配置校验通过。当前 Docker 引擎未运行，真实 MySQL/Redis/Nginx 容器联通与镜像构建尚未验收。前端生产依赖审计零问题；测试工具的间接依赖仍有 4 项 moderate，兼容修复未消除。
+最新验证（2026-11-22）：后端 62 项、前端 24 项测试通过，Ruff、ESLint、类型检查和构建通过。隔离 HTTP 与浏览器录入、自选、备注、退出清理通过；桌面双栏、520px 备注弹窗和 390px 布局已验证。
+
+真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0002`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
+
+默认 Web 端口使用 `18180`，避免本机已有服务占用 `18080`。Worker 不另开健康端口，由 API 汇总 Redis 心跳判断。容器验收不代表行情源实时能力验收；数据备份、真实 SSE 业务和市场时效仍未完成。前端生产依赖审计零问题；测试工具间接依赖仍有 4 项 moderate，另保留一条 Starlette/httpx 测试弃用提示。
 
 金额相关接口后续采用十进制字符串，时间带明确时区。注释说明职责、边界和设计原因；模块按复杂度分层，不预建空 Domain。阶段 0 的时效、额度、主备和授权验证通过后，再启用实时行情与风控。

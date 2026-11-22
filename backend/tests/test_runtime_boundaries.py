@@ -1,6 +1,8 @@
 import asyncio
+import importlib.util
 import json
 import logging
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -51,6 +53,57 @@ def test_structured_log_never_formats_credentials():
     assert diagnostic["trace_id"] == "test-trace"
     assert diagnostic["service"] == "worker"
     assert "secret" not in json.dumps(diagnostic)
+
+
+def test_local_env_initialization_is_private_and_never_overwrites(tmp_path, capsys, monkeypatch):
+    script = Path(__file__).resolve().parents[2] / "scripts" / "init_local_env.py"
+    spec = importlib.util.spec_from_file_location("init_local_env", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    template = script.parents[1] / ".env.example"
+    (tmp_path / ".env.example").write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    module.main()
+    content = (tmp_path / ".env").read_text(encoding="utf-8")
+    values = dict(
+        line.split("=", 1) for line in content.splitlines() if line and not line.startswith("#")
+    )
+    output = capsys.readouterr().out
+    for name in ("TR_MYSQL_PASSWORD", "TR_MYSQL_ROOT_PASSWORD", "TR_API_TOKEN"):
+        assert len(values[name]) >= 40
+        assert values[name] not in output
+    assert (
+        len(
+            {
+                values[name]
+                for name in ("TR_MYSQL_PASSWORD", "TR_MYSQL_ROOT_PASSWORD", "TR_API_TOKEN")
+            }
+        )
+        == 3
+    )
+    try:
+        module.main()
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("已有配置必须拒绝覆盖")
+    assert (tmp_path / ".env").read_text(encoding="utf-8") == content
+
+
+def test_invalid_env_template_does_not_create_partial_config(tmp_path, monkeypatch):
+    script = Path(__file__).resolve().parents[2] / "scripts" / "init_local_env.py"
+    spec = importlib.util.spec_from_file_location("init_invalid_env", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    (tmp_path / ".env.example").write_text("TR_API_TOKEN=\n", encoding="utf-8")
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    try:
+        module.main()
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("损坏模板必须拒绝生成")
+    assert not (tmp_path / ".env").exists()
 
 
 async def test_worker_connection_failure_closes_client(monkeypatch):
