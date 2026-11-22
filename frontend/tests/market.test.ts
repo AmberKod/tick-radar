@@ -11,6 +11,8 @@ import * as api from '../src/modules/market/api'
 import QuoteTable from '../src/modules/market/components/QuoteTable.vue'
 import { ApiError } from '../src/shared/api/client'
 import type { QuoteDTO } from '../src/modules/market/types'
+import { streamQuotes } from '../src/modules/market/api/stream'
+vi.mock('../src/modules/market/api/stream', () => ({ streamQuotes: vi.fn() }))
 vi.mock('../src/modules/market/api', () => ({ getQuote: vi.fn(), getQuotes: vi.fn(), refreshQuotes: vi.fn(), getGroups: vi.fn(), getItems: vi.fn(), createGroup: vi.fn(), createSecurityFromQuote: vi.fn(), addItem: vi.fn() }))
 const quote: QuoteDTO = { symbol: 'US:AAPL', name: null, market: 'US', currency: 'USD', currency_basis: 'MARKET_METADATA', timestamp_semantics: 'VENDOR_UPDATE_UNVERIFIED', timestamp_timezone_basis: 'UNVERIFIED', source: 'tencent_public', provider_symbol: 'usAAPL', price: null, prev_close: null, change: null, change_percent: null, market_timestamp: null, source_time_raw: null, received_at: null, cache_age_seconds: null, market_status: 'UNKNOWN', delay_status: 'UNKNOWN', quality_status: 'UNKNOWN', error: null, observation_only: true, warnings: [] }
 const group = { id: 'g1', name: '自选', position: 0 }
@@ -24,6 +26,34 @@ vi.mock('naive-ui', () => ({
 function dashboard() { return mount(MarketDashboard) }
 beforeEach(() => { setActivePinia(createPinia()); vi.resetAllMocks(); vi.mocked(api.getGroups).mockResolvedValue({ groups: [group] }); vi.mocked(api.getItems).mockResolvedValue({ items: [] }) })
 describe('行情观察', () => {
+  it('旧分组迟到成员和流事件均不能覆盖新分组', async () => {
+    const store = useMarketStore()
+    const item = (symbol: string) => ({ security: { symbol } }) as Awaited<ReturnType<typeof api.getItems>>['items'][number]
+    let finish!: (value: Awaited<ReturnType<typeof api.getItems>>) => void
+    vi.mocked(api.getItems).mockImplementationOnce(() => new Promise(resolve => { finish = resolve })).mockResolvedValue({ items: [item('US:MSFT')] })
+    store.groupId = 'g1'; const old = store.loadBoard()
+    store.groupId = 'g2'; await store.loadBoard()
+    finish({ items: [item('US:AAPL')] }); await old
+    expect(streamQuotes).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(streamQuotes).mock.calls[0]?.[0]).toEqual(['US:MSFT'])
+    const oldStream = vi.mocked(streamQuotes).mock.calls[0]![1]
+    store.groupId = 'g3'; await store.loadBoard()
+    oldStream.onEvent({ id: 'old', event: 'snapshot', schema_version: 1, symbols: ['US:MSFT'], quotes: [usable], checked_at: '', observation_only: true, error: null })
+    expect(store.quotes).toEqual([]); expect(oldStream.signal.aborted).toBe(true)
+    store.clear()
+  })
+  it('主动刷新和同成员刷新列表不重建流或请求HTTP报价', async () => {
+    const store = useMarketStore()
+    vi.mocked(api.getItems).mockResolvedValue({ items: [{ security: { symbol: 'US:AAPL' } }] } as Awaited<ReturnType<typeof api.getItems>>)
+    store.groupId = 'g1'; await store.loadBoard(); await store.loadBoard()
+    const stream = vi.mocked(streamQuotes).mock.calls[0]![1]
+    stream.onEvent({ id: '1', event: 'snapshot', schema_version: 1, symbols: ['US:AAPL'], quotes: [usable], checked_at: '', observation_only: true, error: null })
+    await store.refresh()
+    expect(api.refreshQuotes).toHaveBeenCalledWith(['US:AAPL'])
+    expect(streamQuotes).toHaveBeenCalledTimes(1); expect(api.getQuotes).not.toHaveBeenCalled()
+    window.dispatchEvent(new CustomEvent('auth:cleared'))
+    expect(stream.signal.aborted).toBe(true); expect(store.quotes).toEqual([])
+  })
   it('查询与看板并发不会取消彼此或留下 loading', async () => {
     let finish!: (result: QuoteDTO) => void
     vi.mocked(api.getQuote).mockImplementation(() => new Promise(resolve => { finish = resolve }))

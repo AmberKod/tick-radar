@@ -3,22 +3,23 @@ import { defineStore } from 'pinia'
 import * as api from '../api'
 import type { Market, QuoteDTO } from '../types'
 import { errorMessage } from '../../../shared/api/client'
+import { createQuoteSubscription } from './subscription'
 export const useMarketStore = defineStore('market', () => {
-  const quote = ref<QuoteDTO | null>(null), quotes = ref<QuoteDTO[]>([]), checkedAt = ref('')
+  const subscription = createQuoteSubscription()
+  const { quotes, checkedAt, error: quoteError, state: connectionState, stateLabel: connectionLabel } = subscription
+  const quote = ref<QuoteDTO | null>(null)
   const groups = ref<Awaited<ReturnType<typeof api.getGroups>>['groups']>([]), groupId = ref('')
-  const loading = ref(false), error = ref(''), quoteError = ref(''), actionMessage = ref('')
-  let pollTimer: ReturnType<typeof setInterval> | undefined
+  const loading = ref(false), error = ref(''), actionMessage = ref('')
   let lookupController: AbortController | undefined, boardController: AbortController | undefined, groupsController: AbortController | undefined
   let lookupRevision = 0, boardRevision = 0, sessionEpoch = 0
   function clearPrivate() {
     sessionEpoch++; boardRevision++; boardController?.abort(); groupsController?.abort()
-    if (pollTimer) clearInterval(pollTimer)
-    pollTimer = undefined; quotes.value = []; checkedAt.value = ''; groups.value = []; groupId.value = ''; quoteError.value = ''; actionMessage.value = ''
+    subscription.stop(); groups.value = []; groupId.value = ''; actionMessage.value = ''
   }
   function clear() {
     clearPrivate(); lookupRevision++; lookupController?.abort(); quote.value = null; loading.value = false; error.value = ''
   }
-  watch(groupId, () => { boardRevision++; boardController?.abort(); quotes.value = []; checkedAt.value = ''; quoteError.value = '' }, { flush: 'sync' })
+  watch(groupId, () => { boardRevision++; boardController?.abort(); subscription.stop() }, { flush: 'sync' })
   async function lookup(symbol: string) {
     const version = ++lookupRevision, controller = new AbortController()
     lookupController?.abort(); lookupController = controller
@@ -47,20 +48,17 @@ export const useMarketStore = defineStore('market', () => {
       const { items } = await api.getItems(selected, { signal: controller.signal })
       if (!current()) return
       const symbols = items.slice(0, 50).map(item => item.security.symbol)
-      if (!symbols.length) { quotes.value = []; checkedAt.value = ''; return }
-      const result = await api.getQuotes(symbols, { signal: controller.signal })
-      if (current()) { quotes.value = result.quotes; checkedAt.value = result.checked_at }
+      subscription.subscribe(symbols)
     } catch (cause) { if (current()) quoteError.value = errorMessage(cause) }
   }
   async function refresh() {
     if (!quotes.value.length) return
     const epoch = sessionEpoch, selected = groupId.value
     quoteError.value = ''
-    try { await api.refreshQuotes(quotes.value.map(item => item.symbol)); if (epoch === sessionEpoch && selected === groupId.value) await loadBoard() }
+    try { await api.refreshQuotes(quotes.value.map(item => item.symbol)) }
     catch (cause) { if (epoch === sessionEpoch && selected === groupId.value) quoteError.value = errorMessage(cause) }
   }
   function visibleQuotes(market: Market | 'ALL') { return market === 'ALL' ? quotes.value : quotes.value.filter(item => item.market === market) }
-  function startPolling() { if (!pollTimer) pollTimer = setInterval(() => { if (groupId.value) void loadBoard() }, 10_000) }
   window.addEventListener('auth:cleared', clearPrivate)
-  return { quote, quotes, checkedAt, groups, groupId, loading, error, quoteError, actionMessage, lookup, loadGroups, loadBoard, refresh, visibleQuotes, startPolling, clearPrivate, clear }
+  return { quote, quotes, checkedAt, groups, groupId, loading, error, quoteError, actionMessage, lookup, loadGroups, loadBoard, refresh, visibleQuotes, connectionState, connectionLabel, clearPrivate, clear }
 })

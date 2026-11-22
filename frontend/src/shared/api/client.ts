@@ -14,7 +14,16 @@ export interface RequestOptions { signal?: AbortSignal; timeoutMs?: number }
 let accessToken = ''
 export const getAccessToken = () => accessToken
 export const setAccessToken = (token: string) => { accessToken = token }
-const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
+export const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
+export async function responseError(response: Response, requestId: string, requestToken: string): Promise<ApiError> {
+  const body = await response.json().catch(() => ({})) as ApiErrorBody
+  const id = response.headers.get('X-Request-ID') || body.trace_id || requestId
+  if (response.status === 401 && accessToken === requestToken) {
+    setAccessToken('')
+    window.dispatchEvent(new CustomEvent('api:unauthorized'))
+  }
+  return new ApiError(body.message || `请求失败（HTTP ${response.status}）`, response.status, body.code || 'HTTP_ERROR', id, body.details)
+}
 export async function apiRequest<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
   const controller = new AbortController()
   const requestId = crypto.randomUUID()
@@ -32,13 +41,7 @@ export async function apiRequest<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', p
       ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
     })
     if (!response.ok) {
-      const body = await response.json().catch(() => ({})) as ApiErrorBody
-      const id = response.headers.get('X-Request-ID') || body.trace_id || requestId
-      if (response.status === 401 && accessToken === requestToken) {
-        setAccessToken('')
-        window.dispatchEvent(new CustomEvent('api:unauthorized'))
-      }
-      throw new ApiError(body.message || `请求失败（HTTP ${response.status}）`, response.status, body.code || 'HTTP_ERROR', id, body.details)
+      throw await responseError(response, requestId, requestToken)
     }
     if (response.status === 204) return undefined as T
     return await response.json() as T

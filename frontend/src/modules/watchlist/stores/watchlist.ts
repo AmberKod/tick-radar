@@ -13,13 +13,13 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     const version = ++revision
     controller?.abort(); controller = new AbortController()
     const signal = controller.signal
-    loading.value = true; error.value = ''; items.value = []
+    loading.value = true; error.value = ''
     try {
       if (includeGroups) {
         const result = await api.getGroups({ signal })
         if (version !== revision) return
         groups.value = [...result.groups].sort((a, b) => a.position - b.position)
-        if (!groups.value.some(group => group.id === selected.value)) selected.value = groups.value[0]?.id ?? null
+        if (!groups.value.some(group => group.id === selected.value)) { selected.value = groups.value[0]?.id ?? null; items.value = [] }
       }
       if (selected.value !== null) {
         const result = await api.getItems(selected.value, { signal })
@@ -29,7 +29,7 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     } catch (cause) { if (version === revision) error.value = errorMessage(cause) }
     finally { if (version === revision) loading.value = false }
   }
-  function select(id: string) { if (saving.value || loading.value) return; selected.value = id; void load(false) }
+  function select(id: string) { if (saving.value || loading.value) return; selected.value = id; items.value = []; void load(false) }
   async function mutate(action: () => Promise<unknown>) {
     if (saving.value || loading.value) return false
     const version = session
