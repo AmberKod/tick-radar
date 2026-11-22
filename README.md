@@ -52,13 +52,13 @@ docker compose --env-file .env -f deploy/docker-compose.yml up --build -d
 3. 选择或创建分组，确认交易所和证券类型，再加入自选。名称来自本次真实查询；美股交易所必须手选，供应商已知交易所与选择冲突时拒绝登记。
 4. 在行情看板切换市场筛选，或进入“自选股”管理备注、顺序和分组。检查时间、源端时间、采集时间分别展示。
 
-默认 Worker 每轮间隔 30 秒采集最多 50 个去重自选，行情看板和自选页通过鉴权 SSE 接收共享报价，不再定时请求报价接口。超过该总量的自选不保证后台覆盖；单个看板只展示所选分组前 50 个成员。可通过 `TR_QUOTE_REFRESH_INTERVAL_SECONDS`（10–300）和 `TR_QUOTE_MAX_SYMBOLS`（1–50）调整采集范围。API 不启动后台调度。
+默认 Worker 每轮间隔 30 秒采集最多 50 个去重标的，覆盖持仓、自选与观察规则；满额时最多预留10个规则轮转名额，行情看板和自选页通过鉴权 SSE 接收共享报价，不再定时请求报价接口。超过该总量的自选不保证后台覆盖；单个看板只展示所选分组前 50 个成员。可通过 `TR_QUOTE_REFRESH_INTERVAL_SECONDS`（10–300）和 `TR_QUOTE_MAX_SYMBOLS`（1–50）调整采集范围。API 不启动后台调度。
 
 当前只有腾讯公共观察源，未配置独立备用。刷新使用 15 秒随机 owner 租约，Worker 发布同时校验实例 owner；共享上游预算每分钟最多 30 个批请求，Redis 不可用时每进程降为 10 批。失败保留旧价格及原采集时间并标记滞后，超过 180 秒缓存标记滞后；美股源端时间的时区尚未确认，不强行归一化。当前中国香港市场只接入 `HK:0xxxx` 港元柜台。
 
 SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新全量快照，再接收报价更新；浏览器离线会取消旧连接并退避重连。连接显示“行情已连接/行情重连中”，切组、离开页面和退出会释放订阅。心跳每 10 秒发送，最长 300 秒轮换连接，每个 API 进程最多 8 条连接；缓存缺失等待 Worker，连接/重连不触发行情采集。Pub/Sub 不保存离线增量，事件 ID 不提供历史重放保证。
 
-行情首页新增七所交易日历，区分常规交易、午间休市、常规时段外、休市和日历未知，并展示下一次开市/午后复市、收市、半日市标记及日历版本。常规日历状态与报价质量独立：开市不代表报价实时，延迟继续为 UNKNOWN；自动价格预警、止损通知、实时分钟更新尚未启用；沪深历史15分钟观察已接入，见下节。周末样本和页面闭环通过不代表阶段 0 Go；开市采样、独立备用和展示/缓存授权仍待验收。
+行情首页新增七所交易日历，区分常规交易、午间休市、常规时段外、休市和日历未知，并展示下一次开市/午后复市、收市、半日市标记及日历版本。常规日历状态与报价质量独立：开市不代表报价实时，延迟继续为 UNKNOWN；观察规则与站内通知已接入，实时止损和实时分钟更新尚未启用；沪深历史15分钟观察已接入，见下节。周末样本和页面闭环通过不代表阶段 0 Go；开市采样、独立备用和展示/缓存授权仍待验收。
 
 日历固定使用已验证的 `exchange-calendars==4.13.3`，当前有效范围为交易所本地日期 `2026-01-01` 至 `2026-12-31`；覆盖外或加载失败返回 UNKNOWN，不按工作日猜测，也不推算下一年。沪深北的 2026 休市公告已逐日核对，显式共享 XSHG；库里的 BSE 别名实际指孟买交易所，本系统不使用该别名。中国香港使用 XHKG；NYSE、NASDAQ、AMEX 使用 XNYS 常规日历，并明确共享依据。午休、美国夏令时、提前收市及年初/年末边界已有回归，集合竞价细分、扩展时段、个股停牌与临时公告自动同步尚未实现。
 
@@ -137,6 +137,21 @@ SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新
 
 2026-11-22验收：完整后端538项、前端114项及规范/类型/构建通过；独立Fraction有理数参考8组（含2,000随机操作）逐步核对零差异，4类无效领域输入拒绝。真实MySQL13项检查通过，覆盖手算、幂等/并发卖出、冲正原子性、API重建账本一致、无自选持仓的后台估值及清理。真实资产浏览器11项、指标配置10项、SSE7项回归通过，页面错误0，桌面与390px布局核对通过。本批迁移`0005`，迁移前0004加密恢复点为`artifacts/backups/20261122T130355_078640Z.trbk`。证据：`artifacts/backend-portfolio-tests.xml`、`frontend-portfolio-tests.json`、`portfolio-domain-reference.json`、`portfolio-api.json`、`portfolio-browser.json`及`portfolio-desktop.png`/`portfolio-mobile.png`；独立验收脚本保留在外层`market-probe/scripts/verify_portfolio*`。
 
+## 观察预警与站内通知
+
+打开 `http://127.0.0.1:18180/alerts`，验证Token后在“预警规则”新建规则、搜索证券，明确填写触发阈值、重置阈值和冷却秒数。默认停用，勾选“启用规则”后由Worker评估；支持价格上穿/下穿、日涨跌幅高于/低于四种规则，暂无指标交叉、窗口波动、持仓回撤或定时提醒规则。
+
+- `OBSERVATION`允许有效观察快照：身份/币种匹配、价格有限正数、接收时间不在未来且不超过180秒、质量为UNKNOWN或MARKET_CLOSED。来源实际延迟和源端时间语义仍未经验证，不适合作实时止损；`REALTIME`可以保存停用规则，但启用固定拒绝`REALTIME_NOT_VERIFIED`，没有开关绕过。
+- 价格穿越首个有效样本只建基线，随后从阈值另一侧跨到阈值或外侧触发一次；首次就在阈值外侧不补造穿越。日涨跌幅按真实价格/昨收重新计算，首次满足水平条件可触发，不按交易日自动复位。
+- 触发后进入TRIGGERED，只有到重置区或人工重置才回到ARMED；重置不清冷却。冷却期间的价格穿越只更新基线，不等冷却结束补发。无效/缺失样本或超过180秒接收断档会打断穿越基线，恢复第一笔不补触发。源端内容重复或接收时间未前进跳过。
+- 规则、状态和事件保存在MySQL。每次修改/重置/删除携当前版本，冲突保留页面草稿，需刷新并重选；删除是软归档，旧触发事件保留完整规则及报价快照。事件按触发轮次唯一，复位后同内容可成为新一轮；事件和Outbox与状态在同一事务写入。
+- “只读试算”使用已保存规则和共享缓存，展示模拟前后状态；不更新规则状态、不写事件或通知、不请求供应商。未保存草稿不会参与试算。
+- 最多200条未归档规则；评估默认5秒扫描，缓存快照每批50标的。供应商采集每轮最多50，饱和时最多预留10个规则轮转名额，含主目标被截断的规则标的；轮转可能造成数据断档，不保证完整穿越捕获。关闭`TR_ALERT_OBSERVATION_ENABLED`停止评估；间隔配置为`TR_ALERT_SCAN_INTERVAL_SECONDS`与`TR_NOTIFICATION_DISPATCH_INTERVAL_SECONDS`。
+- 站内通知仅用`IN_APP`通道。Worker默认2秒投递事务Outbox，失败退避最多5次后DEAD，保存每次投递尝试；手动重试增加5次额度并保留历史。收件箱与事件/Outbox有唯一约束，崩溃或并发重试不重复入箱，已投递不能重试。Worker事务进入及提交前核对实例owner，失锁或取消回滚。
+- “站内通知测试”是独立投递测试，明确不代表行情触发；同请求UUID重试不重复创建。页面可刷新收件箱、单条或全部已读、筛选投递状态和查看投递尝试。未配置外部邮件、Webhook或聊天渠道，也不执行自动交易。
+
+2026-11-22验收：后端593项、前端124项及规范/类型/构建通过；独立状态机参考32场景、20,228步零差异。真实MySQL/API11项通过，包含并发版本冲突、只读试算、真实缓存触发、事件/投递/入箱一一对应、测试UUID幂等、已读与重建持久化、仅清合成记录；真实MySQL额外验证连续5次失败保存点回滚、DEAD手动恢复第6次仅入箱一次。真实预警浏览器8项通过、页面错误0，桌面及390px布局核对；初次截图暴露与概览alert-panel样式冲突，已改专用类并增加标题/表格实际宽度断言后复验。原资产11项、SSE7项回归通过。迁移`0006`，迁移前0005加密备份为`artifacts/backups/20261122T144021_006980Z.trbk`。证据：`artifacts/backend-alerts-tests.xml`、`frontend-alerts-tests.json`、`alert-domain-reference.json`、`alerts-api.json`、`alerts-browser.json`、`notification-recovery-validation.json`及`alerts-desktop.png`/`alerts-mobile.png`；独立验收脚本仍在外层`market-probe/scripts/`。
+
 ## 迁移与接口契约
 
 MySQL 可用并已设置连接环境变量后执行迁移；应用启动不会自动建表。
@@ -192,6 +207,12 @@ backend/.venv/Scripts/python.exe -m cross_market.operations.backup restore-check
 - `POST /api/v1/indicators/minute`：公共只读15分钟指标；body为`{symbol,limit,parameters}`，展示最多250根，不接受Bar或复权参数。
 - `GET/POST /api/v1/indicators/profiles`：鉴权配置列表/创建；创建body为`{name,timeframe,price_adjustment,market_scope,parameters}`。
 - `GET/PUT/DELETE /api/v1/indicators/profiles/{profile_id}`：鉴权配置读取/覆盖/删除；PUT需附当前`version`，DELETE需`?version=...`。旧版本冲突409，不自动覆盖。
+- `GET/POST /api/v1/alerts/rules`、`GET/PUT/DELETE .../{rule_id}`：鉴权观察规则管理，修改及删除须当前版本。
+- `POST /api/v1/alerts/rules/{rule_id}/reset`：带版本重置基线；`POST .../preview`为纯缓存只读试算。
+- `GET /api/v1/alerts/events`：分页触发快照，可按规则过滤，包含归档规则事件。
+- `GET /api/v1/notifications/inbox`、`PUT .../{message_id}/read`、`POST .../read-all`：站内收件箱及已读。
+- `GET /api/v1/notifications/outbox`、`GET .../{outbox_id}/deliveries`、`POST .../{outbox_id}/retry`：投递记录与手动重试。
+- `POST /api/v1/notifications/test`：带请求UUID的显式站内投递测试，不代表行情事件。
 - `GET/POST /api/v1/portfolio/accounts`：鉴权账户列表/创建，币种CNY/HKD/USD。
 - `GET/PUT/DELETE /api/v1/portfolio/accounts/{account_id}`：鉴权读取、重命名/启停、删除无流水空账户。
 - `GET /api/v1/portfolio/accounts/{account_id}/ledger`：分页审计账本；`POST .../entries`录入六类流水，必传唯一`request_id`。
@@ -212,7 +233,7 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新验证（2026-11-22）：含备份可选依赖时后端 538 项、前端 114 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
+最新验证（2026-11-22）：含备份可选依赖时后端 593 项、前端 124 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
 
 真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0003`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。Nginx 使用 Docker DNS 动态解析 API 容器地址，API 独立重建后代理恢复已实测。关闭浏览器后的 35 秒无行情 HTTP 请求窗口中，两个自选的采集时间继续推进，采集任务为 success；证据为 `artifacts/market-worker-validation.json`。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
 
