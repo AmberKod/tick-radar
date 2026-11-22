@@ -82,7 +82,7 @@ SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新
 
 ## 日线指标观察
 
-打开“历史K线”并查询标的后，默认显示MA均线与MACD副图，图中可切换KDJ/ATR。“显示技术指标”开关立即重新查询，无需再点查询；展开“指标参数”可选择“短周期观察”或“标准参数”，也可调整周期后点击查询生效。参数不保存为数据库配置档案；输入非法值或MACD快线不小于慢线时不提交请求。只看纯K线可关闭开关，或通过`?symbol=US:AAPL&indicators=off`直接打开。
+打开“历史K线”并查询标的后，默认显示MA均线与MACD副图，图中可切换KDJ/ATR。“显示技术指标”开关立即重新查询，无需再点查询；展开“指标参数”可选择“短周期观察”或“标准参数”，也可调整周期后点击查询生效。参数编辑与计算提交分开；可在“我的指标配置”中保存至MySQL，见下节。输入非法值或MACD快线不小于慢线时不提交计算请求。只看纯K线可关闭开关，或通过`?symbol=US:AAPL&indicators=off`直接打开。
 
 - 短周期观察：MA10、MACD(6,13,5)、KDJ(13,5,5)、ATR14；标准参数：MA20、MACD(12,26,9)、KDJ(9,3,3)、ATR14。
 - MA叠加主图，可开关；MACD、KDJ、ATR在独立副图切换，成交量单独成区。悬停显示精确十进制字符串；未成熟值显示“预热不足”，图上不把空值当零。
@@ -106,6 +106,21 @@ SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新
 - 固定HTTPS来源、6秒请求/2MiB响应上限、每进程30HTTP/分钟预算、60秒最多32项进程缓存及1秒并发等待；历史和指标均只读，不新增MySQL表、报价缓存发布或Worker任务，数据展示/存储许可仍待核实。
 
 2026-11-22验收：后端443项、前端89项测试通过，Ruff/ESLint/类型检查/构建通过；沪深2组真实分钟数据共1,920个指标输出与独立pandas参考逐点比对，误差均≤1e-8。真实分钟浏览器7项通过、页面错误0，桌面及390px截图核对通过；原有日线9项、日线指标7项与SSE7项回归通过。证据为 `artifacts/minute-indicators-reference.json`、`minute-browser-validation.json`、`backend-minute-tests.xml`、`frontend-minute-tests.json`、`minute-desktop.png`、`minute-mobile.png`；独立验收脚本位于外层 `market-probe/scripts/verify_minute_reference.py`、`verify_minute_browser.cjs`。分钟样本实际截止为北京时间2026-11-20 15:00，不能据此认定盘中时效或美股分钟链路已通过。
+
+## 保存与复用指标配置
+
+进入历史K线页，展开“指标参数”，在“我的指标配置”验证访问Token后管理个人配置。公共历史与指标计算仍可匿名使用。
+
+1. 编辑参数并填写配置名称，点“另存为”，保存完整8项参数、当前周期与复权口径。日线页面保存全市场配置，15分钟页面保存CN配置。
+2. 从“已保存配置”选择条目，再点“载入配置”。载入只填入参数；点击查询后才重新计算，图中“实际参数”继续展示当前结果使用的快照。
+3. 修改参数或名称后点“覆盖更新”，基于已读取的版本保存。另一页面已更新时返回冲突，保留当前草稿；点“刷新配置”并重新选择后再操作，不自动重试覆盖。
+4. 删除需要再次确认名称及版本。配置存MySQL，页面刷新后重新验证Token即可读取；Token仅当前页面内存保存，不存URL或浏览器存储。
+
+配置列表按当前周期、复权和市场兼容性筛选；日线配置不会出现在15分钟列表。不把供应商未核实的分钟复权口径改称raw/qfq/hfq。名称去首尾空白后1至80字，按Unicode NFKC与casefold判同名；同参数不同名称允许保存。返回UUID、版本、算法版本、参数SHA-256及UTC创建/更新时间，更新和删除使用数据库版本条件，失败不会部分写入。
+
+当前实现为命名配置的显式保存/载入，不自动选默认配置、不保存历史参数版本，也未接入指标结果缓存、回测或预警规则引用。数据库迁移为`0004`；迁移前已生成并认证加密恢复点`artifacts/backups/20261122T123244_850102Z.trbk`（对应`0003`），密钥仍独立保管。计算请求继续携带完整参数快照，不通过公开接口读取私有配置。共享HTTP与SSE客户端按会话代数校验迟到401，即使新旧登录使用相同Token也不会错误注销新会话；响应体读取期间取消保留取消语义。
+
+2026-11-22验收：真实MySQL接口12项检查通过，覆盖Unicode同名、4并发同名仅1成功、2并发同版本更新仅1成功、旧版本写删冲突、重命名失败原子性、API独立重建后完整配置不变及仅清本轮记录。真实浏览器10项通过、页面错误0，覆盖保存/覆盖/显式载入再查询、刷新重登、外部更新冲突保留草稿、分钟上下文过滤、删除确认、退出清理和桌面/390px布局；证据 `artifacts/indicator-profiles-api.json`、`indicator-profiles-browser.json`、`profiles-desktop.png`、`profiles-mobile.png`，独立验收脚本在外层 `market-probe/scripts/verify_indicator_profiles.cjs`、`verify_profiles_browser.cjs`。
 
 ## 迁移与接口契约
 
@@ -160,6 +175,8 @@ backend/.venv/Scripts/python.exe -m cross_market.operations.backup restore-check
 - `POST /api/v1/indicators/daily`：公共只读日线指标计算；body为`{symbol,limit,adjustment,parameters}`，不接受客户端上传Bar，不写入业务事实。
 - `GET /api/v1/market/history/minute?symbol=CN:600519&limit=120`：公共沪深历史15分钟，最多320根，复权及标签起止语义未核验。
 - `POST /api/v1/indicators/minute`：公共只读15分钟指标；body为`{symbol,limit,parameters}`，展示最多250根，不接受Bar或复权参数。
+- `GET/POST /api/v1/indicators/profiles`：鉴权配置列表/创建；创建body为`{name,timeframe,price_adjustment,market_scope,parameters}`。
+- `GET/PUT/DELETE /api/v1/indicators/profiles/{profile_id}`：鉴权配置读取/覆盖/删除；PUT需附当前`version`，DELETE需`?version=...`。旧版本冲突409，不自动覆盖。
 - `POST /api/v1/market/refresh`：鉴权主动刷新，受共享租约和预算限制。
 - `POST /api/v1/securities/from-quote`：鉴权真实查询后登记证券，来源标记 `TENCENT_LOOKUP`。
 - `/api/v1/securities`：手工证券资料、分页搜索、市场筛选及名称/状态修改。
@@ -175,7 +192,7 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新验证（2026-11-22）：含备份可选依赖时后端 443 项、前端 89 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
+最新验证（2026-11-22）：含备份可选依赖时后端 488 项、前端 106 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
 
 真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0003`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。Nginx 使用 Docker DNS 动态解析 API 容器地址，API 独立重建后代理恢复已实测。关闭浏览器后的 35 秒无行情 HTTP 请求窗口中，两个自选的采集时间继续推进，采集任务为 success；证据为 `artifacts/market-worker-validation.json`。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
 
