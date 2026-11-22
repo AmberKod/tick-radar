@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Request
 
+from cross_market.modules.market_data.application.history_schemas import HistoryResponse
 from cross_market.modules.market_data.application.schemas import (
     QuoteDTO,
     QuotesResponse,
@@ -18,6 +19,21 @@ async def lookup(request: Request, symbols: list[str], refresh: bool):
         return await request.app.state.quote_service.get_quotes(symbols, refresh=refresh)
     except ValueError as exc:
         raise AppError(422, "INVALID_SYMBOLS", "证券代码或数量无效") from exc
+
+
+@router.get("/history", response_model=HistoryResponse)
+async def history(
+    request: Request,
+    symbol: str,
+    limit: int = 120,
+    adjustment: str = "raw",
+):
+    try:
+        if len(symbol) > 40:
+            raise ValueError("历史请求参数过长")
+        return await request.app.state.history_service.get_history(symbol, limit, adjustment)
+    except ValueError as exc:
+        raise AppError(422, "INVALID_HISTORY_REQUEST", "历史日线请求参数无效") from exc
 
 
 @router.get("/quote", response_model=QuoteDTO)

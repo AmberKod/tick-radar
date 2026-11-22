@@ -1579,6 +1579,68 @@
         }
       }
     },
+    "/api/v1/market/history": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "History",
+        "operationId": "history_api_v1_market_history_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 120,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "adjustment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "raw",
+              "title": "Adjustment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/market/quote": {
       "get": {
         "tags": [
@@ -2088,6 +2150,192 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HistoryBar": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "open": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Open"
+          },
+          "high": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "High"
+          },
+          "low": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Low"
+          },
+          "close": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Close"
+          },
+          "volume": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Volume"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "HistoryBar"
+      },
+      "HistoryResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "HK",
+              "US"
+            ],
+            "title": "Market"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "HKD",
+              "USD"
+            ],
+            "title": "Currency"
+          },
+          "source": {
+            "type": "string",
+            "const": "tencent_history_public",
+            "title": "Source",
+            "default": "tencent_history_public"
+          },
+          "adjustment": {
+            "type": "string",
+            "enum": [
+              "raw",
+              "qfq",
+              "hfq"
+            ],
+            "title": "Adjustment"
+          },
+          "period": {
+            "type": "string",
+            "const": "day",
+            "title": "Period",
+            "default": "day"
+          },
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryBar"
+            },
+            "type": "array",
+            "title": "Bars"
+          },
+          "requested_limit": {
+            "type": "integer",
+            "title": "Requested Limit"
+          },
+          "actual_count": {
+            "type": "integer",
+            "title": "Actual Count"
+          },
+          "latest_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Date"
+          },
+          "earliest_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest Date"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "data_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data As Of"
+          },
+          "observation_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Observation Only",
+            "default": true
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "history_complete": {
+            "type": "boolean",
+            "title": "History Complete"
+          },
+          "coverage_reason": {
+            "type": "string",
+            "title": "Coverage Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "market",
+          "currency",
+          "adjustment",
+          "bars",
+          "requested_limit",
+          "actual_count",
+          "latest_date",
+          "earliest_date",
+          "checked_at",
+          "data_as_of",
+          "warnings",
+          "history_complete",
+          "coverage_reason"
+        ],
+        "title": "HistoryResponse"
       },
       "ItemCreate": {
         "properties": {
