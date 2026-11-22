@@ -42,12 +42,6 @@ def positive_decimal(raw: str) -> Decimal:
     return number
 
 
-def market_status(market: str, now: datetime) -> str:
-    return (
-        "MARKET_CLOSED" if now.astimezone(ZoneInfo(TIMEZONES[market])).weekday() >= 5 else "UNKNOWN"
-    )
-
-
 def parse_record(symbol: str, raw: str) -> dict:
     provider_symbol(symbol)
     market, ticker = symbol.split(":")

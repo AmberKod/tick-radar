@@ -12,7 +12,6 @@ from cross_market.apps.api.main import create_app
 from cross_market.modules.market_data.application.schemas import QuoteDTO
 from cross_market.modules.market_data.application.service import QuoteService
 from cross_market.modules.market_data.domain.quotes import (
-    market_status,
     parse_record,
     provider_symbol,
 )
@@ -206,8 +205,6 @@ async def test_dynamic_cache_age_overrides_weekend():
         ]
         assert result.quality_status == "STALE"
         assert result.cache_age_seconds >= 181
-    assert market_status("CN", datetime(2026, 11, 22, tzinfo=UTC)) == "MARKET_CLOSED"
-    assert market_status("US", datetime(2026, 11, 20, 18, tzinfo=UTC)) == "UNKNOWN"
 
 
 def test_partial_time_and_invalid_prices():

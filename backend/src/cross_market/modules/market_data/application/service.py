@@ -2,6 +2,8 @@ import asyncio
 from datetime import UTC, datetime
 from time import monotonic
 
+from cross_market.modules.market_calendar.application.schemas import Exchange
+from cross_market.modules.market_calendar.application.service import CalendarService
 from cross_market.modules.market_data.application.schemas import (
     QuoteDTO,
     QuoteError,
@@ -9,7 +11,7 @@ from cross_market.modules.market_data.application.schemas import (
 )
 from cross_market.modules.market_data.domain.quotes import (
     CURRENCIES,
-    market_status,
+    infer_exchange,
     parse_record,
     provider_symbol,
 )
@@ -33,8 +35,9 @@ def take_local_budget() -> bool:
 
 
 class QuoteService:
-    def __init__(self, client, redis, settings):
+    def __init__(self, client, redis, settings, calendar: CalendarService | None = None):
         self.source = TencentSource(client)
+        self.calendar = calendar
         self.cache = RedisQuoteCache(redis)
         self.settings = settings
         self._lock = asyncio.Lock()
@@ -61,10 +64,28 @@ class QuoteService:
             raise ValueError("缓存证券标识不匹配")
         return quote
 
-    @staticmethod
-    def present(quote: QuoteDTO, checked_at: datetime) -> QuoteDTO:
+    def present(self, quote: QuoteDTO, checked_at: datetime) -> QuoteDTO:
         quote = quote.model_copy(deep=True)
-        quote.market_status = market_status(quote.market, checked_at)
+        quote.market_state = "UNKNOWN"
+        quote.market_state_reason = "交易所身份或日历尚无法确认"
+        quote.market_state_basis = "UNAVAILABLE"
+        if self.calendar is not None:
+            exchange = quote.provider_exchange or infer_exchange(quote.symbol)
+            if exchange is not None:
+                try:
+                    calendar_status = self.calendar.get_status(Exchange(exchange), checked_at)
+                    quote.market_status = (
+                        "MARKET_CLOSED" if calendar_status.state.value == "CLOSED" else "UNKNOWN"
+                    )
+                    quote.market_state = calendar_status.state
+                    quote.market_state_reason = calendar_status.reason
+                    quote.market_state_basis = calendar_status.basis
+                except (ValueError, KeyError):
+                    quote.market_status = "UNKNOWN"
+            else:
+                quote.market_status = "UNKNOWN"
+        else:
+            quote.market_status = "UNKNOWN"
         if quote.received_at:
             quote.cache_age_seconds = max(0, (checked_at - quote.received_at).total_seconds())
             quote.quality_status = (

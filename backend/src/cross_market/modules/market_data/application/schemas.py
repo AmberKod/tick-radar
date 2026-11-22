@@ -32,6 +32,15 @@ class QuoteDTO(BaseModel):
     attempted_at: datetime | None = None
     cache_age_seconds: float | None = None
     market_status: Literal["MARKET_CLOSED", "UNKNOWN"] = "UNKNOWN"
+    market_state: Literal[
+        "REGULAR_SESSION",
+        "LUNCH_BREAK",
+        "OUTSIDE_REGULAR_SESSION",
+        "CLOSED",
+        "UNKNOWN",
+    ] = "UNKNOWN"
+    market_state_reason: str = "交易日历尚未接入"
+    market_state_basis: str = "UNAVAILABLE"
     delay_status: Literal["UNKNOWN"] = "UNKNOWN"
     quality_status: Literal["UNKNOWN", "MARKET_CLOSED", "STALE", "UNAVAILABLE", "INVALID"] = (
         "UNAVAILABLE"

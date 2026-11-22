@@ -11,6 +11,7 @@ dependencies = [
   "pydantic>=2.10,<3", "pydantic-settings>=2.7,<3",
   "sqlalchemy[asyncio]>=2.0,<3", "asyncmy>=0.2.10,<1",
   "alembic>=1.14,<2", "redis>=5,<8", "httpx>=0.28,<1", "tzdata>=2025.2",
+  "exchange-calendars==4.13.3",
 ]
 
 [project.optional-dependencies]

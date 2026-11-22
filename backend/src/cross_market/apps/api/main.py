@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from cross_market.apps.api.bootstrap import register_modules
 from cross_market.apps.api.middleware import register_middleware
+from cross_market.modules.market_calendar.application.service import CalendarService
 from cross_market.modules.market_data.application.service import QuoteService
 from cross_market.modules.market_data.application.stream import QuoteStreamService
 from cross_market.modules.market_data.infrastructure.events import RedisQuoteEvents
@@ -21,10 +22,12 @@ from cross_market.shared.logging import configure_logging
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
+    calendar = CalendarService(settings.calendar_closed_dates)
 
     @asynccontextmanager
     async def lifespan(app):
         configure_logging(settings.log_level)
+        await calendar.warmup()
         engine = create_engine(settings)
         app.state.engine = engine
         app.state.session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -39,7 +42,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(6, connect=2)) as client:
-                app.state.quote_service = QuoteService(client, redis, settings)
+                app.state.quote_service = QuoteService(client, redis, settings, calendar=calendar)
                 app.state.quote_stream = QuoteStreamService(
                     app.state.quote_service, RedisQuoteEvents(redis)
                 )
@@ -55,6 +58,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="TickRadar API", version=settings.version, lifespan=lifespan)
     app.state.settings = settings
+    app.state.market_calendar = calendar
     register_exception_handlers(app)
     app.add_middleware(
         CORSMiddleware,

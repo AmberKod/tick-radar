@@ -1821,10 +1821,80 @@
           }
         }
       }
+    },
+    "/api/v1/market-calendar/statuses": {
+      "get": {
+        "tags": [
+          "market-calendar"
+        ],
+        "summary": "Statuses",
+        "operationId": "statuses_api_v1_market_calendar_statuses_get",
+        "parameters": [
+          {
+            "name": "exchange",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Exchange"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exchange"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketCalendarStatusesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CalendarBasis": {
+        "type": "string",
+        "enum": [
+          "EXCHANGE_CALENDARS_REGULAR",
+          "CN_2026_REVIEWED_SHARED",
+          "MANUAL_CLOSED",
+          "UNAVAILABLE"
+        ],
+        "title": "CalendarBasis"
+      },
+      "CalendarState": {
+        "type": "string",
+        "enum": [
+          "REGULAR_SESSION",
+          "LUNCH_BREAK",
+          "OUTSIDE_REGULAR_SESSION",
+          "CLOSED",
+          "UNKNOWN"
+        ],
+        "title": "CalendarState"
+      },
       "ComponentStatus": {
         "properties": {
           "status": {
@@ -1917,6 +1987,19 @@
           "trace_id"
         ],
         "title": "ErrorResponse"
+      },
+      "Exchange": {
+        "type": "string",
+        "enum": [
+          "SSE",
+          "SZSE",
+          "BSE",
+          "HKEX",
+          "NYSE",
+          "NASDAQ",
+          "AMEX"
+        ],
+        "title": "Exchange"
       },
       "GroupDTO": {
         "properties": {
@@ -2173,6 +2256,218 @@
         ],
         "title": "LiveStatus"
       },
+      "Market": {
+        "type": "string",
+        "enum": [
+          "CN",
+          "HK",
+          "US"
+        ],
+        "title": "Market"
+      },
+      "MarketCalendarStatus": {
+        "properties": {
+          "exchange": {
+            "$ref": "#/components/schemas/Exchange"
+          },
+          "market": {
+            "$ref": "#/components/schemas/Market"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CalendarState"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "local_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Local Time"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "session_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Session Date"
+          },
+          "is_trading_day": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Trading Day"
+          },
+          "is_early_close": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Early Close"
+          },
+          "session_open": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Open"
+          },
+          "break_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Break Start"
+          },
+          "break_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Break End"
+          },
+          "session_close": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Close"
+          },
+          "next_open": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Open"
+          },
+          "next_close": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Close"
+          },
+          "calendar_name": {
+            "type": "string",
+            "title": "Calendar Name"
+          },
+          "calendar_version": {
+            "type": "string",
+            "title": "Calendar Version"
+          },
+          "coverage_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Coverage Start"
+          },
+          "coverage_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Coverage End"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/CalendarBasis"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "scope": {
+            "type": "string",
+            "const": "REGULAR_EQUITIES_ONLY",
+            "title": "Scope",
+            "default": "REGULAR_EQUITIES_ONLY"
+          }
+        },
+        "type": "object",
+        "required": [
+          "exchange",
+          "market",
+          "state",
+          "timezone",
+          "local_time",
+          "checked_at",
+          "session_date",
+          "calendar_name",
+          "calendar_version",
+          "coverage_start",
+          "coverage_end",
+          "basis",
+          "reason"
+        ],
+        "title": "MarketCalendarStatus"
+      },
+      "MarketCalendarStatusesResponse": {
+        "properties": {
+          "statuses": {
+            "items": {
+              "$ref": "#/components/schemas/MarketCalendarStatus"
+            },
+            "type": "array",
+            "title": "Statuses"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "statuses",
+          "checked_at"
+        ],
+        "title": "MarketCalendarStatusesResponse"
+      },
       "ModuleInfo": {
         "properties": {
           "name": {
@@ -2423,6 +2718,28 @@
             ],
             "title": "Market Status",
             "default": "UNKNOWN"
+          },
+          "market_state": {
+            "type": "string",
+            "enum": [
+              "REGULAR_SESSION",
+              "LUNCH_BREAK",
+              "OUTSIDE_REGULAR_SESSION",
+              "CLOSED",
+              "UNKNOWN"
+            ],
+            "title": "Market State",
+            "default": "UNKNOWN"
+          },
+          "market_state_reason": {
+            "type": "string",
+            "title": "Market State Reason",
+            "default": "交易日历尚未接入"
+          },
+          "market_state_basis": {
+            "type": "string",
+            "title": "Market State Basis",
+            "default": "UNAVAILABLE"
           },
           "delay_status": {
             "type": "string",

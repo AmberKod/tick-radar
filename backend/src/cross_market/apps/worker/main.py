@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from cross_market.apps.worker.runtime import WorkerRuntime
 from cross_market.apps.worker.task_registry import registered_tasks
+from cross_market.modules.market_calendar.application.service import CalendarService
 from cross_market.shared.config import Settings
 from cross_market.shared.database import create_engine
 from cross_market.shared.logging import configure_logging
@@ -33,6 +34,8 @@ async def run() -> int:
         loop.call_soon_threadsafe(runtime.stop_event.set)
 
     try:
+        calendar = CalendarService(settings.calendar_closed_dates)
+        await calendar.warmup()
         if settings.market_observation_enabled:
             from cross_market.modules.market_data.application.service import QuoteService
             from cross_market.modules.watchlist.application.service import list_quote_targets
@@ -45,7 +48,9 @@ async def run() -> int:
             runtime.tasks = registered_tasks(
                 session_factory=async_sessionmaker(engine, expire_on_commit=False),
                 list_targets=list_quote_targets,
-                quote_service=QuoteService(client=client, redis=redis, settings=settings),
+                quote_service=QuoteService(
+                    client=client, redis=redis, settings=settings, calendar=calendar
+                ),
             )
         # signal.signal 同时兼容 Windows 和 Unix 主线程入口。
         for sig in (signal.SIGINT, signal.SIGTERM):

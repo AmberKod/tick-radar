@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     market_observation_enabled: bool = True
     quote_refresh_interval_seconds: int = Field(default=30, ge=10, le=300)
     quote_max_symbols: int = Field(default=50, ge=1, le=50)
+    # 按交易所本地日期配置临时全日闭市；不用于单证券停牌。
+    calendar_closed_dates: dict[str, str] = Field(default_factory=dict, max_length=100)
     worker_name: str = "main"
     worker_lock_key: str = "lock:worker:main"
     worker_heartbeat_key: str = "health:worker:main"
