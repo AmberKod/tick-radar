@@ -57,6 +57,32 @@ backend/.venv/Scripts/python.exe scripts/export_openapi.py --output backend/open
 npm --prefix frontend run generate:api
 ```
 
+## 加密备份与隔离恢复验收
+
+运维入口独立运行，不在 API/Worker 启动时执行。首次安装额外依赖，并在仓库根目录执行：
+
+```bash
+backend/.venv/Scripts/python.exe -m pip install -c backend/constraints.txt -e "./backend[backup]"
+
+# 仅首次生成；已有密钥时拒绝覆盖。
+backend/.venv/Scripts/python.exe -m cross_market.operations.backup init-key
+backend/.venv/Scripts/python.exe -m cross_market.operations.backup create
+
+# 将下面路径替换为 create 输出的实际备份文件。
+backend/.venv/Scripts/python.exe -m cross_market.operations.backup inspect artifacts/backups/<文件名>.trbk
+backend/.venv/Scripts/python.exe -m cross_market.operations.backup restore-check artifacts/backups/<文件名>.trbk
+```
+
+`--key <路径>` 必须放在子命令之前，`create --output <目录>` 可选择另一个备份目录。默认密钥为 `.local-secrets/backup.key`，备份为 `artifacts/backups/*.trbk`；密钥与备份禁止放进同一目录树，两者均被 Git 和镜像构建忽略。文件权限按 `0600` 创建；Windows 的实际访问控制由目录 ACL 决定。
+
+- AES-256-GCM 对元数据和 SQL 做完整性认证。文件损坏或密钥错误时，在创建容器前拒绝；密钥丢失无法恢复，请另行安全保管。
+- 导出仅使用 Compose `tick-radar/mysql` 容器的内部凭据，不读主机 `.env` 或打印密码，SQL 仅在内存和管道中传递，磁盘只落密文。
+- 首版限制 SQL 为 64 MiB，只支持 InnoDB 基础表；视图、触发器、例程、事件或其他表引擎会拒绝。备份期间禁止 DDL/数据库迁移；数据写入通过一致性事务快照导出。
+- `restore-check` 只会创建唯一临时 MySQL，禁网、不映射端口、不挂源卷，校验迁移版本、表行数和重新导出摘要后清理。它不提供覆盖当前数据库的入口；跨机演练还需预先准备归档中记录的本地 MySQL 镜像。
+- 当前实现为按需备份与恢复验收，不自动创建计划、不自动删除历史文件。默认目录仍在同一台机器，异机复制、密钥独立保管、30 份日备份/12 份月备份的保留执行尚未配置。
+
+2026-11-22 真实演练已恢复非空证券/自选数据，重导出摘要一致，源库恢复前后及合成数据清理后的摘要未改变；临时容器无残留。加密备份含演练时的合成资料，应以具体备份时间选择恢复点。
+
 ## 接口与验证
 
 - `GET /health/live`：API 存活。
@@ -78,10 +104,10 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新验证（2026-11-22）：后端 62 项、前端 24 项测试通过，Ruff、ESLint、类型检查和构建通过。隔离 HTTP 与浏览器录入、自选、备注、退出清理通过；桌面双栏、520px 备注弹窗和 390px 布局已验证。
+最新验证（2026-11-22）：含备份可选依赖时后端 85 项、前端 24 项测试通过，Ruff、ESLint、类型检查和构建通过。隔离 HTTP 与浏览器录入、自选、备注、退出清理通过；桌面双栏、520px 备注弹窗和 390px 布局已验证。
 
 真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0002`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
 
-默认 Web 端口使用 `18180`，避免本机已有服务占用 `18080`。Worker 不另开健康端口，由 API 汇总 Redis 心跳判断。容器验收不代表行情源实时能力验收；数据备份、真实 SSE 业务和市场时效仍未完成。前端生产依赖审计零问题；测试工具间接依赖仍有 4 项 moderate，另保留一条 Starlette/httpx 测试弃用提示。
+默认 Web 端口使用 `18180`，避免本机已有服务占用 `18080`。Worker 不另开健康端口，由 API 汇总 Redis 心跳判断。容器验收不代表行情源实时能力验收；加密备份/隔离恢复已通过，定时与异机保管、真实 SSE 业务和市场时效仍未完成。前端生产依赖审计零问题；测试工具间接依赖仍有 4 项 moderate，另保留一条 Starlette/httpx 测试弃用提示。
 
 金额相关接口后续采用十进制字符串，时间带明确时区。注释说明职责、边界和设计原因；模块按复杂度分层，不预建空 Domain。阶段 0 的时效、额度、主备和授权验证通过后，再启用实时行情与风控。

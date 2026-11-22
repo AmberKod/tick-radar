@@ -22,3 +22,5 @@
 .vscode/
 .idea/
 artifacts/
+.local-secrets/
+*.trbk
