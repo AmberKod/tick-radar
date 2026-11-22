@@ -1932,6 +1932,87 @@
           }
         }
       }
+    },
+    "/api/v1/indicators/daily": {
+      "post": {
+        "tags": [
+          "indicators"
+        ],
+        "summary": "Daily Indicators",
+        "operationId": "daily_indicators_api_v1_indicators_daily_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndicatorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyIndicatorsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2010,6 +2091,102 @@
           "worker"
         ],
         "title": "Components"
+      },
+      "DailyIndicatorsResponse": {
+        "properties": {
+          "history": {
+            "$ref": "#/components/schemas/HistoryResponse"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/IndicatorParameters"
+          },
+          "algorithm_version": {
+            "type": "string",
+            "const": "daily-v1",
+            "title": "Algorithm Version",
+            "default": "daily-v1"
+          },
+          "parameter_hash": {
+            "type": "string",
+            "title": "Parameter Hash"
+          },
+          "source_bars": {
+            "type": "integer",
+            "title": "Source Bars"
+          },
+          "warmup_bars": {
+            "type": "integer",
+            "title": "Warmup Bars"
+          },
+          "warmup_requested": {
+            "type": "integer",
+            "title": "Warmup Requested"
+          },
+          "visible_bars": {
+            "type": "integer",
+            "title": "Visible Bars"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "calculated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Calculated At"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "observation_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Observation Only",
+            "default": true
+          },
+          "formula_notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Formula Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "history",
+          "parameters",
+          "parameter_hash",
+          "source_bars",
+          "warmup_bars",
+          "warmup_requested",
+          "visible_bars",
+          "points",
+          "as_of",
+          "calculated_at",
+          "warnings",
+          "formula_notes"
+        ],
+        "title": "DailyIndicatorsResponse"
       },
       "ErrorResponse": {
         "properties": {
@@ -2336,6 +2513,215 @@
           "coverage_reason"
         ],
         "title": "HistoryResponse"
+      },
+      "IndicatorParameters": {
+        "properties": {
+          "ma_period": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 2.0,
+            "title": "Ma Period",
+            "default": 10
+          },
+          "macd_fast": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 2.0,
+            "title": "Macd Fast",
+            "default": 6
+          },
+          "macd_slow": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 3.0,
+            "title": "Macd Slow",
+            "default": 13
+          },
+          "macd_signal": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 2.0,
+            "title": "Macd Signal",
+            "default": 5
+          },
+          "kdj_lookback": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 2.0,
+            "title": "Kdj Lookback",
+            "default": 13
+          },
+          "kdj_k": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 2.0,
+            "title": "Kdj K",
+            "default": 5
+          },
+          "kdj_d": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 2.0,
+            "title": "Kdj D",
+            "default": 5
+          },
+          "atr_period": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 2.0,
+            "title": "Atr Period",
+            "default": 14
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IndicatorParameters"
+      },
+      "IndicatorPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "ma": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ma"
+          },
+          "dif": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dif"
+          },
+          "dea": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dea"
+          },
+          "macd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Macd"
+          },
+          "k": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "K"
+          },
+          "d": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D"
+          },
+          "j": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "J"
+          },
+          "atr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "ma",
+          "dif",
+          "dea",
+          "macd",
+          "k",
+          "d",
+          "j",
+          "atr"
+        ],
+        "title": "IndicatorPoint"
+      },
+      "IndicatorRequest": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Symbol"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 120
+          },
+          "adjustment": {
+            "type": "string",
+            "enum": [
+              "raw",
+              "qfq",
+              "hfq"
+            ],
+            "title": "Adjustment",
+            "default": "raw"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/IndicatorParameters"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "IndicatorRequest"
       },
       "ItemCreate": {
         "properties": {

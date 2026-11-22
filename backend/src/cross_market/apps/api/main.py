@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from cross_market.apps.api.bootstrap import register_modules
 from cross_market.apps.api.middleware import register_middleware
+from cross_market.modules.indicators.application.service import IndicatorService
 from cross_market.modules.market_calendar.application.service import CalendarService
 from cross_market.modules.market_data.application.history import HistoryService
 from cross_market.modules.market_data.application.service import QuoteService
@@ -46,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 timeout=httpx.Timeout(6, connect=2), trust_env=False
             ) as client:
                 app.state.history_service = HistoryService(client, settings)
+                app.state.indicator_service = IndicatorService(app.state.history_service)
                 app.state.quote_service = QuoteService(client, redis, settings, calendar=calendar)
                 app.state.quote_stream = QuoteStreamService(
                     app.state.quote_service, RedisQuoteEvents(redis)
