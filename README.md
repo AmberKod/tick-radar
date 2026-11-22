@@ -73,7 +73,7 @@ backend/.venv/Scripts/python.exe -m cross_market.operations.backup inspect artif
 backend/.venv/Scripts/python.exe -m cross_market.operations.backup restore-check artifacts/backups/<文件名>.trbk
 ```
 
-`--key <路径>` 必须放在子命令之前，`create --output <目录>` 可选择另一个备份目录。默认密钥为 `.local-secrets/backup.key`，备份为 `artifacts/backups/*.trbk`；密钥与备份禁止放进同一目录树，两者均被 Git 和镜像构建忽略。文件权限按 `0600` 创建；Windows 的实际访问控制由目录 ACL 决定。
+`--key <路径>` 必须放在子命令之前，`create --output <目录>` 可选择另一个备份目录。所有相对路径以命令当前工作目录为基准；在仓库根目录之外执行时，应显式指定密钥、归档及输出目录的绝对路径。默认密钥为 `.local-secrets/backup.key`，备份为 `artifacts/backups/*.trbk`；密钥与备份禁止放进同一目录树，两者均被 Git 和镜像构建忽略。文件权限按 `0600` 创建；Windows 的实际访问控制由目录 ACL 决定。
 
 - AES-256-GCM 对元数据和 SQL 做完整性认证。文件损坏或密钥错误时，在创建容器前拒绝；密钥丢失无法恢复，请另行安全保管。
 - 导出仅使用 Compose `tick-radar/mysql` 容器的内部凭据，不读主机 `.env` 或打印密码，SQL 仅在内存和管道中传递，磁盘只落密文。
@@ -81,7 +81,7 @@ backend/.venv/Scripts/python.exe -m cross_market.operations.backup restore-check
 - `restore-check` 只会创建唯一临时 MySQL，禁网、不映射端口、不挂源卷，校验迁移版本、表行数和重新导出摘要后清理。它不提供覆盖当前数据库的入口；跨机演练还需预先准备归档中记录的本地 MySQL 镜像。
 - 当前实现为按需备份与恢复验收，不自动创建计划、不自动删除历史文件。默认目录仍在同一台机器，异机复制、密钥独立保管、30 份日备份/12 份月备份的保留执行尚未配置。
 
-2026-11-22 真实演练已恢复非空证券/自选数据，重导出摘要一致，源库恢复前后及合成数据清理后的摘要未改变；临时容器无残留。加密备份含演练时的合成资料，应以具体备份时间选择恢复点。
+2026-11-22 真实演练已恢复非空证券/自选数据，重导出摘要一致，源库恢复前后及合成数据清理后的摘要未改变；临时容器无残留。演练归档含当时的合成资料；清理后已另行生成并恢复验证不含合成记录的备份。应按归档的创建时间和验收报告选择恢复点，不能将演练备份当作日常业务备份。
 
 ## 接口与验证
 
