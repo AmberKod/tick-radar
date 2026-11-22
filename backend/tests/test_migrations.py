@@ -7,6 +7,8 @@ from alembic.config import Config
 from sqlalchemy import event, inspect, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from cross_market.modules.indicators.application.schemas import IndicatorParameters
+from cross_market.modules.indicators.infrastructure.models import IndicatorProfile
 from cross_market.modules.securities.infrastructure.models import Security
 from cross_market.modules.system.infrastructure.models import SystemSetting
 from cross_market.modules.watchlist.infrastructure.models import WatchlistGroup, WatchlistItem
@@ -64,7 +66,16 @@ def test_upgrade_persistence_restart_and_downgrade(tmp_path):
                     currency="USD",
                 )
                 group = WatchlistGroup(name="测试", position=0)
-                session.add_all([security, group])
+                profile = IndicatorProfile(
+                    name="持久化配置",
+                    name_key="a" * 64,
+                    timeframe="day",
+                    price_adjustment="raw",
+                    market_scope="ALL",
+                    parameters=IndicatorParameters().model_dump(),
+                    algorithm_version="daily-v1",
+                )
+                session.add_all([security, group, profile])
                 await session.flush()
                 session.add(
                     WatchlistItem(
@@ -81,12 +92,29 @@ def test_upgrade_persistence_restart_and_downgrade(tmp_path):
             async with async_sessionmaker(engine)() as session:
                 assert (await session.scalar(select(WatchlistItem))).note == "持久化"
                 assert (await session.scalar(select(Security))).symbol == "US:AAPL"
+                profile = await session.scalar(select(IndicatorProfile))
+                assert profile.name == "持久化配置"
+                assert profile.parameters == IndicatorParameters().model_dump()
+                assert profile.version == 1
         finally:
             await engine.dispose()
 
     asyncio.run(write_business())
     command.upgrade(config, "head")
     asyncio.run(verify_business_restart())
+    command.downgrade(config, "0003")
+
+    async def verify_profile_removed():
+        engine = create_async_engine(url)
+        try:
+            async with engine.connect() as connection:
+                names = await connection.run_sync(lambda sync: inspect(sync).get_table_names())
+                assert "t_indicator_profile" not in names
+                assert "t_security" in names
+        finally:
+            await engine.dispose()
+
+    asyncio.run(verify_profile_removed())
     command.downgrade(config, "0001_system_settings")
     asyncio.run(read_after_restart())
 
