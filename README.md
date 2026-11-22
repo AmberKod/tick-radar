@@ -58,7 +58,13 @@ docker compose --env-file .env -f deploy/docker-compose.yml up --build -d
 
 SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新全量快照，再接收报价更新；浏览器离线会取消旧连接并退避重连。连接显示“行情已连接/行情重连中”，切组、离开页面和退出会释放订阅。心跳每 10 秒发送，最长 300 秒轮换连接，每个 API 进程最多 8 条连接；缓存缺失等待 Worker，连接/重连不触发行情采集。Pub/Sub 不保存离线增量，事件 ID 不提供历史重放保证。
 
-本版不把未知延迟当实时：周末显示休市，工作日交易状态暂为未知，自动价格预警、止损通知、分钟线尚未启用。周末样本和页面闭环通过不代表阶段 0 Go；开市采样、交易日历、独立备用和展示/缓存授权仍待验收。
+行情首页新增七所交易日历，区分常规交易、午间休市、常规时段外、休市和日历未知，并展示下一次开市/午后复市、收市、半日市标记及日历版本。常规日历状态与报价质量独立：开市不代表报价实时，延迟继续为 UNKNOWN；自动价格预警、止损通知、分钟线尚未启用。周末样本和页面闭环通过不代表阶段 0 Go；开市采样、独立备用和展示/缓存授权仍待验收。
+
+日历固定使用已验证的 `exchange-calendars==4.13.3`，当前有效范围为交易所本地日期 `2026-01-01` 至 `2026-12-31`；覆盖外或加载失败返回 UNKNOWN，不按工作日猜测，也不推算下一年。沪深北的 2026 休市公告已逐日核对，显式共享 XSHG；库里的 BSE 别名实际指孟买交易所，本系统不使用该别名。中国香港使用 XHKG；NYSE、NASDAQ、AMEX 使用 XNYS 常规日历，并明确共享依据。午休、美国夏令时、提前收市及年初/年末边界已有回归，集合竞价细分、扩展时段、个股停牌与临时公告自动同步尚未实现。
+
+临时全日闭市可通过 `TR_CALENDAR_CLOSED_DATES` JSON 配置，例如 `{"SSE:2026-12-31":"已核实的临时休市原因"}`，按具体交易所和本地日期生效，最多100项；这是格式示例，不是实际休市公告。配置更新后需重建 API/Worker 容器；系统会从下一次开闭市计算中跳过这些日期。空配置 `{}` 不覆盖日历，不提供临时开市、半日变更或单证券停牌入口。
+
+2026 日历核对依据：[上交所休市公告](https://www.sse.com.cn/disclosure/announcement/general/c/c_20251222_10802507.shtml)、[深交所休市公告](https://www.szse.cn/disclosure/notice/t20251222_618087.html)、[北交所休市公告](https://www.bse.cn/important_news/200027428.html)、[港交所证券市场假期](https://www.hkex.com.hk/-/media/HKEX-Market/Services/Circulars-and-Notices/Participant-and-Members-Circulars/SEHK/2025/cc_SEHK_CT_075_2025.pdf)、[NYSE 假期和交易时间](https://nyse.com/trade/hours-calendars)、[Nasdaq 股票假期](https://www.nasdaq.com/market-activity/stock-market-holiday-schedule)。交易前仍需核对交易所临时公告；此模块不等同于自动交易或预警授权。
 
 ## 迁移与接口契约
 
@@ -107,6 +113,7 @@ backend/.venv/Scripts/python.exe -m cross_market.operations.backup restore-check
 - `GET /openapi.json`：后端接口契约。
 - `GET /api/v1/auth/session`：验证内存中的 Bearer Token。
 - `GET /api/v1/events/stream?symbols=...`：鉴权 SSE，单次最多50代码；事件为 snapshot / quote.updated / heartbeat / error，data契约为 QuoteStreamEvent。Token不接受URL传递。
+- `GET /api/v1/market-calendar/statuses`：公共七所常规日历，可用 `?exchange=NASDAQ` 筛选一所；不接受任意日期查询。
 - `GET /api/v1/market/quote?symbol=...`、`GET /api/v1/market/quotes?symbols=...`：公共观察报价，匿名 GET 不允许强制刷新。
 - `POST /api/v1/market/refresh`：鉴权主动刷新，受共享租约和预算限制。
 - `POST /api/v1/securities/from-quote`：鉴权真实查询后登记证券，来源标记 `TENCENT_LOOKUP`。
@@ -123,7 +130,7 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新验证（2026-11-22）：含备份可选依赖时后端 151 项、前端 50 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。
+最新验证（2026-11-22）：含备份可选依赖时后端 250 项、前端 56 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
 
 真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0003`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。Nginx 使用 Docker DNS 动态解析 API 容器地址，API 独立重建后代理恢复已实测。关闭浏览器后的 35 秒无行情 HTTP 请求窗口中，两个自选的采集时间继续推进，采集任务为 success；证据为 `artifacts/market-worker-validation.json`。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
 
