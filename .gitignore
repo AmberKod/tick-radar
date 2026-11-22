@@ -1,0 +1,24 @@
+# 本地配置、虚拟环境和构建产物不进入版本库。
+.env
+.env.*
+!.env.example
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+**/.test-tmp*/
+**/*.egg-info/
+.playwright-cli/
+**/.coverage
+**/htmlcov/
+**/node_modules/
+**/dist/
+**/coverage/
+*.log
+*.db
+*.sqlite*
+.vscode/
+.idea/
+artifacts/
