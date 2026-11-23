@@ -1,6 +1,6 @@
 import json
 from collections.abc import Awaitable, Callable
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select, text, update
@@ -71,6 +71,20 @@ async def enqueue(session, event_id, title, body, payload) -> str:
     return existing.id
 
 
+def schedule_expiry_error(payload, now):
+    """定时提醒仅在有效期内投递；缺失或畸形时间禁止迟到入箱。"""
+    if payload.get("kind") != "SCHEDULE_REMINDER":
+        return None
+    try:
+        expires_at = _time(datetime.fromisoformat(payload["expires_at"]))
+        scheduled_at = _time(datetime.fromisoformat(payload["scheduled_at"]))
+        if expires_at <= scheduled_at or now < scheduled_at:
+            return "SCHEDULE_WINDOW_INVALID"
+        return "SCHEDULE_EXPIRED" if now >= expires_at else None
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return "SCHEDULE_WINDOW_INVALID"
+
+
 async def deliver_in_app(session, outbox, now):
     existing = await session.scalar(select(InboxMessage).where(InboxMessage.outbox_id == outbox.id))
     if existing is None:
@@ -91,6 +105,7 @@ async def dispatch_pending(session, now=None, limit=50, *, adapter: Adapter | No
     """站内写入在调用者事务中执行；Worker提交前再次核对所有权。"""
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
         raise ValueError("limit 必须为 1 到 500 的整数")
+    supplied_now = now
     now = _time(now)
     await _write_lock(session)
     rows = (
@@ -108,6 +123,23 @@ async def dispatch_pending(session, now=None, limit=50, *, adapter: Adapter | No
     ).all()
     result = {"sent": 0, "failed": 0, "pending": 0}
     for row in rows:
+        # 生产每条在获得行锁后读取时钟，排队等待不能延长有效窗口。
+        now = _time(supplied_now)
+        expiry_error = schedule_expiry_error(row.payload, now)
+        if expiry_error:
+            row.status, row.last_error = "EXPIRED", expiry_error
+            row.attempts += 1
+            session.add(
+                NotificationDelivery(
+                    outbox_id=row.id,
+                    attempt=row.attempts,
+                    status="EXPIRED",
+                    error_code=expiry_error,
+                    created_at=now,
+                )
+            )
+            await session.flush()
+            continue
         error = None
         try:
             async with session.begin_nested():
@@ -156,10 +188,12 @@ async def get_outbox(session, outbox_id, *, lock=False):
 
 async def retry_outbox(session, outbox_id):
     row = await get_outbox(session, outbox_id, lock=True)
+    if row.status not in ("PENDING", "DEAD", "RETRY"):
+        raise AppError(409, "NOTIFICATION_RETRY_NOT_ALLOWED", "当前通知不允许重试")
+    if schedule_expiry_error(row.payload, utcnow()):
+        raise AppError(409, "NOTIFICATION_EXPIRED", "定时提醒已过期或有效期无效，不能重试")
     if row.status == "PENDING":
         return row
-    if row.status not in ("DEAD", "RETRY"):
-        raise AppError(409, "NOTIFICATION_RETRY_NOT_ALLOWED", "当前通知不允许重试")
     row.status, row.next_attempt_at = "PENDING", utcnow()
     row.max_attempts = row.attempts + 5
     await session.flush()

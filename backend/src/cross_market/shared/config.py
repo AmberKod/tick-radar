@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://127.0.0.1:15173"]
     market_observation_enabled: bool = True
     alert_observation_enabled: bool = True
+    schedule_reminders_enabled: bool = True
+    schedule_scan_interval_seconds: int = Field(default=5, ge=1, le=30)
     alert_scan_interval_seconds: int = Field(default=5, ge=1, le=60)
     notification_dispatch_interval_seconds: int = Field(default=2, ge=1, le=60)
     quote_refresh_interval_seconds: int = Field(default=30, ge=10, le=300)

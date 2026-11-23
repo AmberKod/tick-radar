@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, field_validator
 
-OutboxStatus = Literal["PENDING", "RETRY", "SENT", "DEAD"]
+OutboxStatus = Literal["PENDING", "RETRY", "SENT", "DEAD", "EXPIRED"]
 
 
 class NotificationMessage(BaseModel):
@@ -54,7 +54,7 @@ class NotificationDelivery(BaseModel):
     id: str
     outbox_id: str
     attempt: int
-    status: Literal["SENT", "FAILED"]
+    status: Literal["SENT", "FAILED", "EXPIRED"]
     error_code: str | None
     created_at: AwareDatetime
 

@@ -176,6 +176,115 @@ async def test_dispatch_rollback_and_cancellation(factory):
         assert await session.scalar(select(func.count()).select_from(NotificationDelivery)) == 0
 
 
+@pytest.mark.parametrize("offset", [-1, 0, 1])
+async def test_schedule_expiry_is_exclusive_and_never_retried(factory, offset):
+    now = datetime.now(UTC) + timedelta(seconds=1)
+    expires = now + timedelta(seconds=offset)
+    event = uuid4()
+    async with factory() as session, session.begin():
+        oid = await service.enqueue(
+            session,
+            event,
+            "尾盘提醒",
+            "检查清单",
+            {
+                "kind": "SCHEDULE_REMINDER",
+                "scheduled_at": (now - timedelta(seconds=60)).isoformat(),
+                "expires_at": expires.isoformat(),
+            },
+        )
+    async with factory() as session, session.begin():
+        result = await service.dispatch_pending(session, now)
+        row = await service.get_outbox(session, oid)
+        assert row.status == ("SENT" if offset > 0 else "EXPIRED")
+        assert result["sent"] == (1 if offset > 0 else 0)
+        assert await session.scalar(select(func.count()).select_from(InboxMessage)) == (
+            1 if offset > 0 else 0
+        )
+        assert row.attempts == 1
+    async with factory() as session:
+        with pytest.raises(AppError) as exc:
+            await service.retry_outbox(session, oid)
+        assert exc.value.code == "NOTIFICATION_RETRY_NOT_ALLOWED"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"kind": "SCHEDULE_REMINDER"},
+        {"kind": "SCHEDULE_REMINDER", "scheduled_at": "invalid", "expires_at": "invalid"},
+        {
+            "kind": "SCHEDULE_REMINDER",
+            "scheduled_at": "2026-11-23T06:30:00",
+            "expires_at": "2026-11-23T06:32:00",
+        },
+    ],
+)
+async def test_schedule_invalid_window_fails_closed(factory, payload):
+    async with factory() as session, session.begin():
+        oid = await service.enqueue(session, uuid4(), "尾盘提醒", "检查清单", payload)
+    async with factory() as session, session.begin():
+        assert (await service.dispatch_pending(session))["sent"] == 0
+        row = await service.get_outbox(session, oid)
+        assert row.status == "EXPIRED" and row.last_error == "SCHEDULE_WINDOW_INVALID"
+        assert await session.scalar(select(func.count()).select_from(InboxMessage)) == 0
+
+
+async def test_schedule_clock_rechecked_for_each_message(factory, monkeypatch):
+    start = datetime.now(UTC) + timedelta(seconds=1)
+    expires = start + timedelta(seconds=1)
+    async with factory() as session, session.begin():
+        ids = [
+            await service.enqueue(
+                session,
+                uuid4(),
+                "尾盘提醒",
+                "检查清单",
+                {
+                    "kind": "SCHEDULE_REMINDER",
+                    "scheduled_at": (start - timedelta(seconds=30)).isoformat(),
+                    "expires_at": expires.isoformat(),
+                },
+            )
+            for _ in range(2)
+        ]
+    # 批次查询与第一条处在窗口内，第二条模拟等待后到达失效边界。
+    clock = iter([start, start, expires])
+    monkeypatch.setattr(service, "utcnow", lambda: next(clock))
+    async with factory() as session, session.begin():
+        result = await service.dispatch_pending(session)
+        statuses = [(await service.get_outbox(session, oid)).status for oid in ids]
+        assert sorted(statuses) == ["EXPIRED", "SENT"]
+        assert result["sent"] == 1
+        assert await session.scalar(select(func.count()).select_from(InboxMessage)) == 1
+
+
+async def test_schedule_retry_after_window_is_rejected_without_write(factory):
+    now = datetime.now(UTC)
+    async with factory() as session, session.begin():
+        oid = await service.enqueue(
+            session,
+            uuid4(),
+            "尾盘提醒",
+            "检查清单",
+            {
+                "kind": "SCHEDULE_REMINDER",
+                "scheduled_at": (now - timedelta(minutes=5)).isoformat(),
+                "expires_at": (now - timedelta(minutes=3)).isoformat(),
+            },
+        )
+        row = await service.get_outbox(session, oid)
+        row.status = "DEAD"
+    async with factory() as session:
+        with pytest.raises(AppError) as exc:
+            await service.retry_outbox(session, oid)
+        assert exc.value.code == "NOTIFICATION_EXPIRED"
+        await session.rollback()
+    async with factory() as session:
+        row = await service.get_outbox(session, oid)
+        assert row.status == "DEAD" and row.max_attempts == 5
+
+
 @pytest.fixture
 async def client(factory):
     app = FastAPI()

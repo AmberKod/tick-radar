@@ -289,7 +289,8 @@ async def test_main_closes_all_resources_without_real_database(
     monkeypatch.setattr(main.signal, "signal", lambda *a: None)
 
     async def run(runtime):
-        assert len(runtime.tasks) == (3 if market_enabled else 1)
+        assert len(runtime.tasks) == (4 if market_enabled else 2)
+        assert runtime.tasks[-1].func.__name__ == "schedule_reminder"
         if failure:
             raise RuntimeError("password=secret-value")
         return 0

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from cross_market.modules.alerts.interfaces.router import router as alerts_router
+from cross_market.modules.alerts.interfaces.schedules import router as schedules_router
 from cross_market.modules.indicators.interfaces.profiles import router as profiles_router
 from cross_market.modules.indicators.interfaces.router import router as indicators_router
 from cross_market.modules.market_calendar.interfaces.router import router as calendar_router
@@ -42,4 +43,5 @@ def register_modules(app):
     app.include_router(portfolio_router)
     app.include_router(valuation_router)
     app.include_router(alerts_router)
+    app.include_router(schedules_router)
     app.include_router(notifications_router)

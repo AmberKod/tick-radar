@@ -53,7 +53,7 @@ async def dispatch_once(runtime, *, session_factory):
     async with session_factory() as session:
         async with session.begin():
             await require_owner(runtime)
-            result = await dispatch_pending(session, now=datetime.now(UTC), limit=50)
+            result = await dispatch_pending(session, limit=50)
             await require_owner(runtime)
     sent, failed, pending = result["sent"], result["failed"], result["pending"]
     return (

@@ -83,6 +83,7 @@ async def run() -> int:
                 client=client, redis=redis, settings=settings, calendar=calendar
             ),
             settings=settings,
+            calendar=calendar,
         )
         # signal.signal 同时兼容 Windows 和 Unix 主线程入口。
         for sig in (signal.SIGINT, signal.SIGTERM):

@@ -30,7 +30,10 @@ MODULES = tuple(
             "foundation",
             "日线及沪深15分钟指标观察、版本化参数配置；预警未启用",
         ),
-        ("alerts", "监控告警", "A", "foundation", "观察规则及缓存报价评估；实时风控尚未验收"),
+        (
+            "alerts", "监控告警", "A", "foundation",
+            "观察规则、缓存报价评估及交易日尾盘提醒；实时风控尚未验收",
+        ),
         ("notifications", "通知渠道", "C", "foundation", "站内通知、事务发件箱及投递记录"),
         ("analytics", "分析统计", "B", "planned", "资产分析及统计尚未实施"),
         ("system", "系统管理", "C", "foundation", "状态诊断、模块注册和配置存储基础"),
@@ -43,4 +46,5 @@ def disabled_tasks() -> list[TaskStatus]:
         TaskStatus(name="quote_collector", detail="观察报价任务未注册"),
         TaskStatus(name="alert_engine", detail="观察告警任务未注册"),
         TaskStatus(name="notification_dispatcher", detail="站内通知任务未注册"),
+        TaskStatus(name="schedule_reminder", detail="交易日定时提醒任务未注册"),
     ]

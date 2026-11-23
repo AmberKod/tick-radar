@@ -19,6 +19,12 @@ ALERT_DETAILS = {
     "error": "观察规则评估失败",
     "idle": "暂无启用的观察规则",
 }
+SCHEDULE_DETAILS = {
+    "success": "交易日计划已检查并记录",
+    "partial": "交易日历不可用，部分定时提醒已暂停",
+    "error": "交易日定时提醒检查失败",
+    "idle": "暂无到期的交易日定时提醒",
+}
 NOTIFICATION_DETAILS = {
     "success": "站内通知已投递",
     "partial": "部分站内通知未完成投递",
@@ -46,7 +52,7 @@ def parse_status(raw, interval: int, name="quote_collector", details=None) -> Ta
             detail=details[state],
             checked_at=checked,
             last_success_at=payload.get("last_success_at"),
-            symbol_count=payload.get("symbol_count"),
+            symbol_count=payload.get("symbol_count") if name != "schedule_reminder" else None,
         )
     except (ValueError, TypeError, KeyError, OverflowError):
         return TaskStatus(name=name, status="unknown", detail="任务诊断不可解析")
@@ -73,11 +79,18 @@ async def task_statuses(redis, settings) -> list[TaskStatus]:
             getattr(settings, "notification_dispatch_interval_seconds", 2),
             NOTIFICATION_DETAILS,
         ),
+        (
+            "schedule_reminder",
+            getattr(settings, "schedule_reminders_enabled", True),
+            getattr(settings, "schedule_scan_interval_seconds", 5),
+            SCHEDULE_DETAILS,
+        ),
     )
     tasks = []
     for name, enabled, interval, details in specs:
         if not enabled:
-            tasks.append(TaskStatus(name=name, status="disabled", detail="观察任务已关闭"))
+            detail = "定时提醒任务已关闭" if name == "schedule_reminder" else "观察任务已关闭"
+            tasks.append(TaskStatus(name=name, status="disabled", detail=detail))
             continue
         try:
             async with asyncio.timeout(settings.probe_timeout_seconds):
