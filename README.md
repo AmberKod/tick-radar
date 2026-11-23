@@ -133,9 +133,21 @@ SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新
 - 同一事务写入交易事实、关联现金流水与可重建持仓投影。账户级行锁防并发超卖，`request_id`及请求摘要防重复记账；网络结果不确定时先核对账本，保持原表单重试会沿用请求编号，内容不同但编号相同返回409。
 - 错误流水通过“作废并重算/冲正”处理，需填写原因并再次确认。原事实保留为已作废，并增加关联冲正与反向现金审计记录；这不是另一笔反向市场成交。作废后重放若破坏后续现金或持仓，整笔拒绝且回滚。含任何财务事实的账户不能物理删除，可重命名或停用。
 - 后台采集优先覆盖当前持仓，再补自选，合计最多50个去重标的；清仓标的不再占持仓优先目标。观察估值仅读共享缓存、不在打开页面时触发供应商请求，显示来源、源端原始时间、接收时间、质量和未知延迟。缺价/无效/超过覆盖时单项和不完整总市值、浮盈亏及净资产为`null`，不把缺价视作0；有效旧价会标陈旧观察。
-- 页面按账户原币展示现金、成本、累计已实现收益、分红、独立费用与观察浮盈亏；数值用精确千分位、去冗余小数零，买卖流水金额显示实际成交总额。不跨币种相加，也不把累计或浮动盈亏标成“当日盈亏”。跨币种汇率、内部划转、拆股送股等公司行为和日度净值快照尚未实现。
+- 页面按账户原币展示现金、成本、累计已实现收益、分红、独立费用与观察浮盈亏；数值用精确千分位、去冗余小数零，买卖流水金额显示实际成交总额。不跨币种相加，也不把累计或浮动盈亏标成“当日盈亏”。内部划转及按实际金额记账的换汇已支持；统一币种汇率折算、拆股送股等公司行为和日度净值快照尚未实现。
 
 2026-11-22验收：完整后端538项、前端114项及规范/类型/构建通过；独立Fraction有理数参考8组（含2,000随机操作）逐步核对零差异，4类无效领域输入拒绝。真实MySQL13项检查通过，覆盖手算、幂等/并发卖出、冲正原子性、API重建账本一致、无自选持仓的后台估值及清理。真实资产浏览器11项、指标配置10项、SSE7项回归通过，页面错误0，桌面与390px布局核对通过。本批迁移`0005`，迁移前0004加密恢复点为`artifacts/backups/20261122T130355_078640Z.trbk`。证据：`artifacts/backend-portfolio-tests.xml`、`frontend-portfolio-tests.json`、`portfolio-domain-reference.json`、`portfolio-api.json`、`portfolio-browser.json`及`portfolio-desktop.png`/`portfolio-mobile.png`；独立验收脚本保留在外层`market-probe/scripts/verify_portfolio*`。
+
+## 内部划转与实际金额换汇
+
+在资产组合页选择“内部划转与换汇”，明确选择两个启用账户，按实际发生的北京时间填写本金、到账金额和源币手续费，核对两端预览后确认提交。此操作只记录已发生资金移动，不向银行或券商发起转账或兑换。
+
+- 同币种两端本金必须相等；跨币种填写实际两端金额，冻结`目标到账/源端本金`计算的12位HALF_EVEN汇率，费外计。没有市场汇率请求或自动换汇，不用展示汇率反推事实金额；极小比率显示“小于显示精度”。
+- 源现金扣本金加源币手续费，目标现金增加实收；内部本金计入`internal_net_flow`，不改`external_net_flow`；源费计独立费用，不伪装为买卖收益。账户仍按原币展示，不能跨币直接相加。
+- 两账户按ID排序锁定，双端流水、关联现金与重建持仓投影同事务提交。幂等UUID及内容摘要防重复；缺失幂等键不做间隙加锁查找，唯一冲突后读取赢家。每个历史时点均不允许透支。
+- 划转明细冻结创建时账户名、币种、两端金额和实际比率，并关联两端`TRANSFER_OUT/TRANSFER_IN`流水。普通流水入口拒绝单边冲正，需在划转历史填写原因、确认整体作废；双端原事实保留，新增两条冲正审计，重放若导致目标账户后续余额不足则整笔拒绝。相同整体冲正请求重试返回原结果。
+- 迁移`0008`增加`t_portfolio_transfer`及流水`transfer_id`，原六种普通录入保持不变，未引入汇率估值、统一基准币种、汇兑损益或日度资产快照。
+
+2026-11-23验收：后端688/前端139测试及规范/类型/构建通过。独立Fraction参考1205组汇率、1200组双边重放共15610检查通过；真实API7项（含重建持久化与精确清理）、浏览器6项及桌面1440/手机390通过。真实MySQL5组并发覆盖不相交账户、同源双花、同请求去重、相同整体冲正、全局编号内容冲突；合成记录均按已知ID清理。原资产11、尾盘配置14、SSE7回归；迁移前0007加密恢复点`20261123T010003_267928Z.trbk`认证通过。证据位于`artifacts/backend-transfers-tests.xml`、`frontend-transfers-tests.json`、`transfers-domain-reference.json`、`transfers-api.json`、`transfers-browser.json`、`transfers-mysql-concurrency.json`及`transfers-1440.png`/`transfers-390.png`。
 
 ## 观察预警与站内通知
 
@@ -246,7 +258,7 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新验证（2026-11-23）：含备份可选依赖时后端 660 项、前端 133 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
+最新验证（2026-11-23）：含备份可选依赖时后端 688 项、前端 139 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
 
 真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0003`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。Nginx 使用 Docker DNS 动态解析 API 容器地址，API 独立重建后代理恢复已实测。关闭浏览器后的 35 秒无行情 HTTP 请求窗口中，两个自选的采集时间继续推进，采集任务为 success；证据为 `artifacts/market-worker-validation.json`。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
 
