@@ -139,7 +139,7 @@ SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新
 
 ## 观察预警与站内通知
 
-打开 `http://127.0.0.1:18180/alerts`，验证Token后在“预警规则”新建规则、搜索证券，明确填写触发阈值、重置阈值和冷却秒数。默认停用，勾选“启用规则”后由Worker评估；支持价格上穿/下穿、日涨跌幅高于/低于四种规则，暂无指标交叉、窗口波动、持仓回撤或定时提醒规则。
+打开 `http://127.0.0.1:18180/alerts`，验证Token后在“预警规则”新建规则、搜索证券，明确填写触发阈值、重置阈值和冷却秒数。默认停用，勾选“启用规则”后由Worker评估；支持价格上穿/下穿、日涨跌幅高于/低于四种规则，暂无指标交叉、窗口波动或持仓回撤规则；交易日尾盘提醒由独立配置与任务执行。
 
 - `OBSERVATION`允许有效观察快照：身份/币种匹配、价格有限正数、接收时间不在未来且不超过180秒、质量为UNKNOWN或MARKET_CLOSED。来源实际延迟和源端时间语义仍未经验证，不适合作实时止损；`REALTIME`可以保存停用规则，但启用固定拒绝`REALTIME_NOT_VERIFIED`，没有开关绕过。
 - 价格穿越首个有效样本只建基线，随后从阈值另一侧跨到阈值或外侧触发一次；首次就在阈值外侧不补造穿越。日涨跌幅按真实价格/昨收重新计算，首次满足水平条件可触发，不按交易日自动复位。
@@ -151,6 +151,19 @@ SSE 使用 `fetch` 流和内存 Token 请求头，连接及重连先发送最新
 - “站内通知测试”是独立投递测试，明确不代表行情触发；同请求UUID重试不重复创建。页面可刷新收件箱、单条或全部已读、筛选投递状态和查看投递尝试。未配置外部邮件、Webhook或聊天渠道，也不执行自动交易。
 
 2026-11-22验收：后端593项、前端124项及规范/类型/构建通过；独立状态机参考32场景、20,228步零差异。真实MySQL/API11项通过，包含并发版本冲突、只读试算、真实缓存触发、事件/投递/入箱一一对应、测试UUID幂等、已读与重建持久化、仅清合成记录；真实MySQL额外验证连续5次失败保存点回滚、DEAD手动恢复第6次仅入箱一次。真实预警浏览器8项通过、页面错误0，桌面及390px布局核对；初次截图暴露与概览alert-panel样式冲突，已改专用类并增加标题/表格实际宽度断言后复验。原资产11项、SSE7项回归通过。迁移`0006`，迁移前0005加密备份为`artifacts/backups/20261122T144021_006980Z.trbk`。证据：`artifacts/backend-alerts-tests.xml`、`frontend-alerts-tests.json`、`alert-domain-reference.json`、`alerts-api.json`、`alerts-browser.json`、`notification-recovery-validation.json`及`alerts-desktop.png`/`alerts-mobile.png`；独立验收脚本仍在外层`market-probe/scripts/`。
+
+## 交易日尾盘提醒
+
+在预警中心选择“交易日尾盘提醒”，配置上海、深圳或北京证券交易所，填写北京时间14:00至14:59内的1至8个不重复时点、提醒内容及30至600秒宽限。默认填入14:30、14:40、14:50且停用；保存后须显式勾选启用。定时提醒不依赖行情快照，不代表价格或策略条件已满足。
+
+- 日历必须确认当天为交易日，覆盖、交易所、日期与常规交易时段均匹配；未知、超出覆盖或临时闭市时不发送。当前日历验证范围仅2026年，不能自动推算2027年。
+- 仅当天执行，窗口为`[计划时刻, min(计划时刻+宽限, 当日收盘))`；恢复仍在窗口内可补发，超期记录MISSED，新启用或修改时已经过去的时点不追溯。停用期间不创建记录，也不补历史日期。
+- 每个配置、交易日、时点唯一，编辑版本或重启不重复产生同一时点记录；执行记录保留配置版本和完整日历快照，软删除配置保留历史。最多50个未归档配置，每个配置最多8个时点。
+- `ENQUEUED`仅表示已入Outbox，最终投递结果从“站内通知与投递”核对。定时通知携失效时刻，超过窗口转EXPIRED并记录未投递原因，不进入收件箱、不允许人工续试；普通观察通知的重试不受此限制。
+- 今日预览仅读服务端当日判断，不接受客户端时间、不写执行记录或通知。管理接口全部鉴权，更新和删除带版本，409冲突保留表单草稿。
+- Worker独立运行`schedule_reminder`，不依赖行情观察开关；`TR_SCHEDULE_REMINDERS_ENABLED`控制扫描，`TR_SCHEDULE_SCAN_INTERVAL_SECONDS`默认5秒。开启扫描不自动创建或启用配置，API不注册定时调度。
+
+2026-11-23验收：后端660项、前端133项、规范/类型检查与构建通过（后端仅测试客户端依赖弃用警告1条）。独立领域时序6046例零差异；真实MySQL合成时钟7组均回滚，验证窗口内入队/同slot跨版本防重/边界错过/新启用不追溯/迟到投递EXPIRED/周末假日与覆盖外跳过。另用真实MySQL两个事务验证先建立旧快照、后等待行锁仍只一条执行记录与Outbox；本轮记录清理。真实时钟页面14项、桌面1440/手机390布局通过；API独立重建停用配置完整保留；资产11项、SSE7项回归通过。迁移`0007`，迁移前加密恢复点`20261123T002759_819381Z.trbk`认证通过。证据：`artifacts/backend-schedules-tests.xml`、`frontend-schedules-tests.json`、`schedule-domain-reference.json`、`schedules-mysql.json`、`schedule-concurrency.json`、`schedules-browser.json`、`schedule-persistence.json`与`schedules-1440.png`/`schedules-390.png`。**下午真实到点送达尚未验收**；合成时钟只用于领域/数据库验证，未修改服务端系统时钟，未预置启用用户计划。
 
 ## 迁移与接口契约
 
@@ -233,7 +246,7 @@ npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-最新验证（2026-11-22）：含备份可选依赖时后端 593 项、前端 124 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
+最新验证（2026-11-23）：含备份可选依赖时后端 660 项、前端 133 项测试通过，Ruff、ESLint、类型检查、生产构建和 pip check 通过。真实浏览器 9 项检查通过、页面运行错误 0，覆盖匿名查询、首次验证后保留报价、快捷加自选、美股交易所手选、四市场筛选、可读时间、自选页报价、退出与 Token 不落浏览器存储；桌面与 390px 布局已复验。既有业务证据位于忽略的 `artifacts/backend-market-tests.xml`、`frontend-market-tests.json`、`market-browser-validation.json`。本批日历验收 6 项通过、SSE 7 项回归通过，页面错误均为 0；最终测试与日历证据为 `backend-calendar-tests.xml`、`frontend-calendar-tests.json`、`market-calendar-validation.json`，含容器内午休、半日市、DST 和覆盖外 UNKNOWN 核验。
 
 真实 Docker 链路也已通过：独立镜像构建、MySQL 8.4.13 迁移至 `0003`、Redis 心跳及实例锁、Nginx 静态页面与 API 代理。Nginx 使用 Docker DNS 动态解析 API 容器地址，API 独立重建后代理恢复已实测。关闭浏览器后的 35 秒无行情 HTTP 请求窗口中，两个自选的采集时间继续推进，采集任务为 success；证据为 `artifacts/market-worker-validation.json`。并发创建重复分组仅一次成功；不同分组并发写入序号连续；MySQL 重启后自选及备注保留。重复 Worker 被拒绝；Worker 停止时 API 仍为 200 并标记 `degraded/stale`，Redis 不可读时 Worker 为 `unknown`，恢复后整体 `healthy`。合成验证记录已清理。
 
