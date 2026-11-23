@@ -8,8 +8,12 @@ from cross_market.modules.portfolio.infrastructure.models import Entry, Position
 from cross_market.shared.exceptions import AppError
 
 
-async def entries(session, account_id):
-    return list(await session.scalars(select(Entry).where(Entry.account_id == account_id)))
+async def entries(session, account_id, *, lock=False):
+    query = select(Entry).where(Entry.account_id == account_id)
+    if lock:
+        # 写事务已持有账户锁，当前读防止等待锁前的旧快照漏掉已提交流水。
+        query = query.with_for_update().execution_options(populate_existing=True)
+    return list(await session.scalars(query))
 
 
 def fact(row):

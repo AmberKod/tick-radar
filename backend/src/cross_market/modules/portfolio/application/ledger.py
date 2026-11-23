@@ -76,7 +76,7 @@ async def create_entry(session, account_id, body):
     existing = await duplicate(session, account_id, body.request_id, digest)
     if existing:
         return (await serialize(session, [existing]))[0]
-    rows = await entries(session, account_id)
+    rows = await entries(session, account_id, lock=True)
     writable(owner, rows)
     if body.security_id:
         security = await get_security(session, body.security_id)
@@ -110,11 +110,13 @@ async def reverse_entry(session, account_id, entry_id, body):
     existing = await duplicate(session, account_id, body.request_id, digest)
     if existing:
         return (await serialize(session, [existing]))[0]
-    rows = await entries(session, account_id)
+    rows = await entries(session, account_id, lock=True)
     writable(owner, rows)
     original = next((row for row in rows if row.id == entry_id), None)
     if original is None:
         raise AppError(404, "ENTRY_NOT_FOUND", "流水不存在")
+    if original.transfer_id is not None:
+        raise AppError(409, "TRANSFER_REVERSAL_REQUIRED", "划转流水必须整笔冲正")
     if original.kind == "REVERSAL":
         raise AppError(409, "REVERSAL_NOT_ALLOWED", "不能冲正冲正记录")
     if original.status == "REVERSED":

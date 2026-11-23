@@ -121,7 +121,18 @@ class PortfolioEntry(StrictModel):
     account_id: str
     sequence: int
     request_id: str
-    kind: Literal["DEPOSIT", "WITHDRAWAL", "BUY", "SELL", "DIVIDEND", "FEE", "REVERSAL"]
+    kind: Literal[
+        "DEPOSIT",
+        "WITHDRAWAL",
+        "BUY",
+        "SELL",
+        "DIVIDEND",
+        "FEE",
+        "REVERSAL",
+        "TRANSFER_OUT",
+        "TRANSFER_IN",
+    ]
+    transfer_id: str | None = None
     occurred_at: Timestamp
     security_id: str | None
     symbol: str | None
@@ -168,6 +179,7 @@ class PortfolioSummary(StrictModel):
     dividend_income: str
     standalone_fees: str
     external_net_flow: str
+    internal_net_flow: str = "0.00000000"
     positions: list[PortfolioPosition]
     entry_count: int
     checked_at: Timestamp

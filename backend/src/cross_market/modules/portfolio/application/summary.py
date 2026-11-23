@@ -48,6 +48,7 @@ async def summary(session, account_id):
                 "dividend_income",
                 "standalone_fees",
                 "external_net_flow",
+                "internal_net_flow",
             )
         },
         "positions": positions,

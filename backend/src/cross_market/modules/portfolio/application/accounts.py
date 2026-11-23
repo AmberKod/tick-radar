@@ -14,9 +14,10 @@ def name_key(name):
 
 async def lock_sqlite(session):
     connection = await session.connection()
-    if connection.dialect.name == "sqlite" and not session.info.get("portfolio_lock"):
-        await session.execute(text("BEGIN IMMEDIATE"))
-        session.info["portfolio_lock"] = True
+    if connection.dialect.name == "sqlite":
+        raw = await connection.get_raw_connection()
+        if not raw.driver_connection.in_transaction:
+            await session.execute(text("BEGIN IMMEDIATE"))
 
 
 async def account(session, account_id, *, lock=False):

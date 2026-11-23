@@ -73,6 +73,9 @@ class Entry(Base):
     account_id: Mapped[str] = mapped_column(ForeignKey("t_account.id"), index=True)
     sequence: Mapped[int] = mapped_column(Integer)
     request_id: Mapped[str] = mapped_column(String(36))
+    transfer_id: Mapped[str | None] = mapped_column(
+        ForeignKey("t_portfolio_transfer.id"), index=True
+    )
     request_hash: Mapped[str] = mapped_column(String(64))
     request_payload: Mapped[dict] = mapped_column(JSON)
     kind: Mapped[str] = mapped_column(String(12))

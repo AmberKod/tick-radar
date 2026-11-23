@@ -12,6 +12,7 @@ from cross_market.modules.market_data.interfaces.events import router as market_
 from cross_market.modules.market_data.interfaces.router import router as market_router
 from cross_market.modules.notifications.interfaces.router import router as notifications_router
 from cross_market.modules.portfolio.interfaces.router import router as portfolio_router
+from cross_market.modules.portfolio.interfaces.transfers import router as transfers_router
 from cross_market.modules.portfolio.interfaces.valuation import router as valuation_router
 from cross_market.modules.securities.interfaces.router import router as securities_router
 from cross_market.modules.system.interfaces.router import router
@@ -41,6 +42,7 @@ def register_modules(app):
     app.include_router(indicators_router)
     app.include_router(profiles_router)
     app.include_router(portfolio_router)
+    app.include_router(transfers_router)
     app.include_router(valuation_router)
     app.include_router(alerts_router)
     app.include_router(schedules_router)

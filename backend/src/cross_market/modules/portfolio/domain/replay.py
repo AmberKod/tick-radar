@@ -59,6 +59,7 @@ class Result:
     dividend_income: Decimal = ZERO
     standalone_fees: Decimal = ZERO
     external_net_flow: Decimal = ZERO
+    internal_net_flow: Decimal = ZERO
     positions: dict[str, Position] = field(default_factory=dict)
 
     @property
@@ -76,6 +77,8 @@ def amounts(fact):
             cash = -(gross + fact.fee + fact.tax)
         elif fact.kind in {"SELL", "DIVIDEND"}:
             cash = gross - fact.fee - fact.tax
+        elif fact.kind == "TRANSFER_OUT":
+            cash = -(gross + fact.fee)
         elif fact.kind in {"WITHDRAWAL", "FEE"}:
             cash = -gross
         else:
@@ -115,6 +118,11 @@ def replay(facts):
                 result.dividend_income = money(result.dividend_income + cash)
             elif fact.kind == "FEE":
                 result.standalone_fees = money(result.standalone_fees + gross)
+            elif fact.kind in {"TRANSFER_OUT", "TRANSFER_IN"}:
+                principal = -gross if fact.kind == "TRANSFER_OUT" else gross
+                result.internal_net_flow = money(result.internal_net_flow + principal)
+                if fact.kind == "TRANSFER_OUT":
+                    result.standalone_fees = money(result.standalone_fees + fact.fee)
             elif fact.kind in {"DEPOSIT", "WITHDRAWAL"}:
                 result.external_net_flow = money(result.external_net_flow + cash)
             result.cash_balance = money(result.cash_balance + cash)
