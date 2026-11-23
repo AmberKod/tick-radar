@@ -7,6 +7,7 @@ import { decimalLabel, ruleLabels } from '../composables/ruleDraft'
 import RuleEditor from '../components/RuleEditor.vue'
 import RuleActions from '../components/RuleActions.vue'
 import EventHistory from '../components/EventHistory.vue'
+import SchedulePanel from '../components/SchedulePanel.vue'
 const auth = useAuthStore(), alerts = useAlerts(), tab = ref('rules'), eventRule = ref('')
 const { rules, selected, events, preview, error, busy } = alerts
 onMounted(() => { void alerts.load() })
@@ -16,11 +17,12 @@ function changeTab(value: string) { tab.value = value; if (value === 'events') v
   <div class="business-page alerts-page">
     <section class="page-heading"><div><div class="eyebrow">ALERTS & NOTIFICATIONS</div><h1>预警与通知</h1><p>观察行情条件、追溯触发快照，管理站内通知。</p></div><button :disabled="busy" @click="alerts.load">刷新规则列表</button></section>
     <p class="panel alert-business-panel">观察模式仅接收 UNKNOWN / MARKET_CLOSED 且最新接收不超过 180 秒的数据，源延迟未知，不作为实时止损。最多保存 200 条未归档规则，每轮采集最多 50 个标的；满额时最多预留 10 个规则轮转名额。规则证券无需加入自选，轮转可能造成断档，不能保证实时或完整穿越捕获。</p>
-    <nav class="toolbar" aria-label="预警中心标签"><button v-for="item in [{ key: 'rules', label: '预警规则' }, { key: 'events', label: '触发记录' }, { key: 'notifications', label: '站内通知与投递' }]" :key="item.key" :aria-pressed="tab === item.key" :disabled="busy" @click="changeTab(item.key)">{{ item.label }}</button></nav>
+    <nav class="toolbar" aria-label="预警中心标签"><button v-for="item in [{ key: 'rules', label: '预警规则' }, { key: 'events', label: '触发记录' }, { key: 'notifications', label: '站内通知与投递' }, { key: 'schedules', label: '交易日尾盘提醒' }]" :key="item.key" :aria-pressed="tab === item.key" :disabled="busy" @click="changeTab(item.key)">{{ item.label }}</button></nav>
     <p v-if="error" role="alert">{{ error }}</p>
     <div v-if="tab === 'rules'" class="alert-layout"><section class="panel alert-business-panel"><h2>规则列表</h2><button :disabled="busy" @click="alerts.select(null)">新建规则</button><p v-if="!rules.length">尚无规则，请明确填写阈值后保存。</p><button v-for="rule in rules" :key="rule.id" class="alert-rule" :aria-pressed="selected?.id === rule.id" :disabled="busy" @click="alerts.select(rule)"><strong>{{ rule.name }}</strong><small>{{ rule.symbol }} · {{ rule.security_name }} · v{{ rule.version }}</small><small>{{ ruleLabels[rule.rule_type] }} {{ decimalLabel(rule.threshold) }} · {{ rule.enabled ? '启用' : '停用' }} · {{ rule.state.phase }}</small></button></section><div class="alert-main"><RuleEditor :key="`${auth.epoch}:${selected?.id || 'new'}`" :rule="selected" :busy="busy" :submit="alerts.save" /><RuleActions v-if="selected" :rule="selected" :preview="preview" :busy="busy" :remove="alerts.remove" :reset="alerts.reset" @preview="alerts.simulate" /></div></div>
     <template v-if="tab === 'events'"><label>事件规则筛选<select v-model="eventRule" :disabled="busy" aria-label="事件规则筛选" @change="alerts.loadEvents(1, eventRule)"><option value="">全部规则（含已删除）</option><option v-for="rule in rules" :key="rule.id" :value="rule.id">{{ rule.name }} · {{ rule.symbol }} · v{{ rule.version }}</option></select></label><EventHistory :events="events" :busy="busy" @page="alerts.loadEvents($event, eventRule)" /></template>
     <NotificationsPanel v-if="tab === 'notifications'" :key="auth.epoch" />
+    <SchedulePanel v-if="tab === 'schedules'" :key="auth.epoch" />
   </div>
 </template>
 <style scoped>

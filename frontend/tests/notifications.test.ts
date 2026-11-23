@@ -30,10 +30,10 @@ describe('站内通知', () => {
     await notifications.test(); expect(vi.mocked(api.testNotification).mock.calls[2]![0].request_id).not.toBe(first.request_id)
     expect(first).toEqual({ request_id: expect.any(String) }); wrapper.unmount()
   })
-  it('仅 RETRY/DEAD 且尚有尝试额度可重试，已投递不写入', async () => {
+  it('仅 RETRY/DEAD 可手动续试，已投递及过期不写入', async () => {
     const { notifications, wrapper } = setup(); vi.mocked(api.retryOutbox).mockResolvedValue(queue)
     expect(canRetry(queue)).toBe(true); expect(canRetry({ ...queue, status: 'DEAD', attempts: 5 })).toBe(true)
-    await notifications.retry({ ...queue, status: 'SENT' }); expect(api.retryOutbox).not.toHaveBeenCalled()
+    await notifications.retry({ ...queue, status: 'SENT' }); await notifications.retry({ ...queue, status: 'EXPIRED' }); expect(api.retryOutbox).not.toHaveBeenCalled()
     await notifications.retry(queue); expect(api.retryOutbox).toHaveBeenCalledTimes(1); wrapper.unmount()
   })
   it('已读与全部已读后读取真实收件箱，不客户端伪造', async () => {
