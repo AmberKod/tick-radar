@@ -17,6 +17,7 @@ const tone = (value: string | null | undefined) => !value || /^-?0(?:\.0*)?$/.te
         <div>累计分红<strong>{{ number(summary.dividend_income) }}</strong></div>
         <div>独立费用<strong>{{ number(summary.standalone_fees) }}</strong></div>
         <div>外部净入金<strong>{{ number(summary.external_net_flow) }}</strong></div>
+        <div>内部净划入（原币）<strong>{{ number(summary.internal_net_flow) }}</strong></div>
       </div>
       <p v-for="warning in summary.warnings" :key="warning" role="status">{{ warning }}</p>
       <h3>观察估值</h3>

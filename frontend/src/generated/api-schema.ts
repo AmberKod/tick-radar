@@ -577,6 +577,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Transfers */
+        get: operations["list_transfers_api_v1_portfolio_transfers_get"];
+        put?: never;
+        /** Create Transfer */
+        post: operations["create_transfer_api_v1_portfolio_transfers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio/transfers/{transfer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Transfer */
+        get: operations["get_transfer_api_v1_portfolio_transfers__transfer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio/transfers/{transfer_id}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reverse Transfer */
+        post: operations["reverse_transfer_api_v1_portfolio_transfers__transfer_id__reverse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/accounts/{account_id}/valuation": {
         parameters: {
             query?: never;
@@ -1935,7 +1987,9 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "DEPOSIT" | "WITHDRAWAL" | "BUY" | "SELL" | "DIVIDEND" | "FEE" | "REVERSAL";
+            kind: "DEPOSIT" | "WITHDRAWAL" | "BUY" | "SELL" | "DIVIDEND" | "FEE" | "REVERSAL" | "TRANSFER_OUT" | "TRANSFER_IN";
+            /** Transfer Id */
+            transfer_id?: string | null;
             /**
              * Occurred At
              * Format: date-time
@@ -2087,6 +2141,11 @@ export interface components {
             standalone_fees: string;
             /** External Net Flow */
             external_net_flow: string;
+            /**
+             * Internal Net Flow
+             * @default 0.00000000
+             */
+            internal_net_flow: string;
             /** Positions */
             positions: components["schemas"]["PortfolioPosition"][];
             /** Entry Count */
@@ -2104,6 +2163,115 @@ export interface components {
             calculation_version: "moving-average-v1";
             /** Warnings */
             warnings?: string[];
+        };
+        /** PortfolioTransfer */
+        PortfolioTransfer: {
+            /** Id */
+            id: string;
+            /** Request Id */
+            request_id: string;
+            /** Source Account Id */
+            source_account_id: string;
+            /** Target Account Id */
+            target_account_id: string;
+            /** Source Account Name */
+            source_account_name: string;
+            /** Target Account Name */
+            target_account_name: string;
+            /** Source Currency */
+            source_currency: string;
+            /** Target Currency */
+            target_currency: string;
+            /** Source Amount */
+            source_amount: string;
+            /** Target Amount */
+            target_amount: string;
+            /** Source Fee */
+            source_fee: string;
+            /** Implied Rate */
+            implied_rate: string;
+            /**
+             * Rate Basis
+             * @constant
+             */
+            rate_basis: "ACTUAL_AMOUNTS";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ACTIVE" | "REVERSED";
+            /** Note */
+            note: string;
+            /** Source Entry Id */
+            source_entry_id: string;
+            /** Target Entry Id */
+            target_entry_id: string;
+            /** Source Reversal Entry Id */
+            source_reversal_entry_id: string | null;
+            /** Target Reversal Entry Id */
+            target_reversal_entry_id: string | null;
+            /** Reversal Reason */
+            reversal_reason: string | null;
+            /** Reversed At */
+            reversed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** PortfolioTransferCreate */
+        PortfolioTransferCreate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Source Account Id
+             * Format: uuid
+             */
+            source_account_id: string;
+            /**
+             * Target Account Id
+             * Format: uuid
+             */
+            target_account_id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Source Amount */
+            source_amount: string;
+            /** Target Amount */
+            target_amount: string;
+            /**
+             * Source Fee
+             * @default 0.00000000
+             */
+            source_fee: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** PortfolioTransferPage */
+        PortfolioTransferPage: {
+            /** Items */
+            items: components["schemas"]["PortfolioTransfer"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
         };
         /** PortfolioValuationResponse */
         PortfolioValuationResponse: {
@@ -5331,6 +5499,282 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortfolioSummary"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_transfers_api_v1_portfolio_transfers_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioTransferPage"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_transfer_api_v1_portfolio_transfers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortfolioTransferCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioTransfer"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_transfer_api_v1_portfolio_transfers__transfer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioTransfer"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reverse_transfer_api_v1_portfolio_transfers__transfer_id__reverse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortfolioReversalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioTransfer"];
                 };
             };
             /** @description Unauthorized */

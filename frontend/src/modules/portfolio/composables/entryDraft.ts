@@ -3,6 +3,12 @@ import type { PortfolioAccount, PortfolioEntryCreate } from '../types'
 export const kinds = { DEPOSIT: '入金', WITHDRAWAL: '出金', BUY: '买入', SELL: '卖出', DIVIDEND: '分红', FEE: '费用' } as const
 export type EntryKind = keyof typeof kinds
 export const beijingNow = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 16)
+export function beijingDate(value: string) {
+  if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(value)) throw new Error('请输入北京时间。')
+  const date = new Date(`${value}:00+08:00`)
+  if (!Number.isFinite(date.getTime()) || date.getTime() > Date.now() || value.slice(0, 4) < '1900' || new Date(date.getTime() + 8 * 3600_000).toISOString().slice(0, 16) !== value) throw new Error('发生时间须为1900年起的有效北京时间，且不能晚于现在。')
+  return date.toISOString()
+}
 export const newDraft = () => ({ kind: 'DEPOSIT' as EntryKind, occurred_at: beijingNow(), quantity: '', price: '', amount: '', fee: '0', tax: '0', note: '' })
 export type EntryDraft = ReturnType<typeof newDraft>
 const decimal = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,8})?$/
@@ -21,9 +27,7 @@ export function entryPayload(draft: EntryDraft, security: SecurityDTO | null, ac
   if (trade ? units(quantity) <= 0n || units(price) <= 0n : units(amount) <= 0n) throw new Error(trade ? '数量和成交价必须大于0。' : '金额必须大于0。')
   if (trade && security?.market !== 'US' && units(quantity) % 100000000n !== 0n) throw new Error('沪深京和港股数量须为整数股/份，不是手数。')
   if (draft.kind === 'DIVIDEND' && units(fee) + units(tax) > units(amount)) throw new Error('分红费用与税费合计不能超过分红金额。')
-  if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(draft.occurred_at)) throw new Error('请输入北京时间。')
-  const date = new Date(`${draft.occurred_at}:00+08:00`)
-  if (!Number.isFinite(date.getTime()) || date.getTime() > Date.now() || draft.occurred_at.slice(0, 4) < '1900' || new Date(date.getTime() + 8 * 3600_000).toISOString().slice(0, 16) !== draft.occurred_at) throw new Error('发生时间须为1900年起的有效北京时间，且不能晚于现在。')
+  const occurredAt = beijingDate(draft.occurred_at)
   if (draft.note.trim().length > 500) throw new Error('备注最多500字。')
-  return { request_id: requestId, kind: draft.kind, occurred_at: date.toISOString(), security_id: needsSecurity ? security!.id : null, quantity, price, amount, fee, tax, note: draft.note.trim() }
+  return { request_id: requestId, kind: draft.kind, occurred_at: occurredAt, security_id: needsSecurity ? security!.id : null, quantity, price, amount, fee, tax, note: draft.note.trim() }
 }
